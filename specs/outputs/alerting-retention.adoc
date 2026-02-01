@@ -1,0 +1,28 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+= Alerting & Retention
+:toc:
+:toclevels: 2
+
+== Purpose
+
+Keep SmokePing/LibreSpeed/Hyperglass telemetry for months, link it to policy-gated alerting, and store every event in the VerisimDB audit trail.
+
+== Retention
+
+* Default retention: 90 days of bitemporal SmokePing/jitter graphs.
+* Extended retention: 365+ days archived in compressed Arrow files with dedupe.
+* VerisimDB federation exposes the same timeline to downstream analysts and policy scripts.
+
+== Alerting
+
+* Packet loss >5 % for three SmokePing intervals triggers a webhook/ntfy blast plus Dashy badge.
+* Jitter spike (>10 ms over baseline) from LibreSpeed lights the “jitter pulse”.
+* Hyperglass ASN divergence during a route hop raises a “Rogue path” alert and notifies the WAF guardrail.
+
+== Delivery
+
+* Hooks integrate with webhook bus (Slack, ntfy, PagerDuty) while respecting Svalinn maintenance windows.
+* Alerts log each event in an Ed448-signed audit entry inside VerisimDB to prove immutability.
+* Dashy/Heimdall surfaces unresolved alerts and provides “snapshot + acknowledgement” buttons for SOC playbooks.

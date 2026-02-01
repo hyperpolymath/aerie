@@ -3,7 +3,7 @@
 
 (state
   (metadata
-    (version "0.1.0")
+    (version "0.1.1")
     (schema-version "1.0")
     (created "2026-02-01")
     (updated "2026-02-01")
@@ -17,10 +17,13 @@
 
   (current-position
     (phase "spec-foundation")
-    (overall-completion 20)
+    (overall-completion 30)
     (working-features
       ("K9 specs system"
        "Proof envelope spec"
        "GraphQL schema outline"
        "Policy gate and subscription auth flow"
-       "Bitemporal storage plan"))))
+       "Bitemporal storage plan"
+       "Active probe / alerting HUD spec"
+       "SmokePing retention + webhook thresholds"
+       "Known limitations + guardrails"))))

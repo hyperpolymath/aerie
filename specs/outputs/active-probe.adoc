@@ -1,0 +1,38 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+= Active Probe Forensics
+:toc:
+:toclevels: 2
+
+== Purpose
+
+Drive Hyperglass + SmokePing + LibreSpeed/OpenSpeedTest from the CF-NDS forensics portal so we can contrast passive observations with deliberate probes across the OSI stack.
+
+== Engines
+
+* Hyperglass – BGP traceroute, ASN path checks, MTR-style jitter summaries.
+* SmokePing – Persistent latency tracking (24h/7d/30d) with reference graphs.
+* LibreSpeed – Self-hosted up/down/jitter engine that never talks to third parties.
+* OpenSpeedTest – Optional browser-friendly backup engine for on-demand guest triage.
+
+== Dashboard
+
+Dashy or Heimdall hosts this stack with the “Midnight Security” theme:
+
+* Header ticker – SNI/user-agent stream for spotting anomalies.
+* Path map – GeoIP hops coloured red when a packet traverses unexpected regions.
+* Port heatmap – 65k grid (or curated subset) highlighting active protocols.
+* Health bar – Layered status that compares passive telemetry with active probe success.
+
+== Security Hardening
+
+* Centralise visibility behind Cloudflare WAF + API Shield, then expose via mTLS-protected Dashy/Heimdall.
+* Lock probe runners so they cannot write directly to the Dashy backend without policy approval.
+* Dashy health badges pulse when probe alerts fire, guiding SOC triage.
+
+== Alert Conditions
+
+* Jitter “spikes” (LibreSpeed/SmokePing) that exceed 10 ms or drift >20 % over baseline.
+* Unexpected ASN or geo hops flagged by Hyperglass as part of the route map.
+* Probe failure streaks that persist beyond configured retries drop markers into the HUD.

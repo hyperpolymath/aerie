@@ -12,6 +12,8 @@ A high-assurance alternative to commercial speedtests. CF-NDS is designed to pro
 * BGP path visibility: Integrated Hyperglass instance for real-time routing forensics.
 * Jitter persistence: SmokePing implementation to visualise link degradation over weeks, not seconds.
 * Hardened access: Centralised behind a WAF with strict rate-limiting to prevent probe poisoning.
+* Dual passive/active forensics: Zeek/Suricata listening + Hyperglass/SmokePing/LibreSpeed probes for OSI-layer visibility.
+* Alerting with retention: Webhook/ntfy hooks plus bitemporal SmokePing history for policy-aware SOC response.
 
 == Architecture (Secure Stack)
 
@@ -22,7 +24,11 @@ A high-assurance alternative to commercial speedtests. CF-NDS is designed to pro
 
 == Specs (K9 SVC)
 
-See `specs/` for the bottom-up K9 components and rendered AsciiDoc outputs.
+See `specs/` for the bottom-up K9 components and rendered AsciiDoc outputs, including:
+
+* `active-probe.adoc` – the Hyperglass/SmokePing/LibreSpeed HUD modules.
+* `alerting-retention.adoc` – webhook/ntfy triggers plus SmokePing retention tiers into VerisimDB.
+* `known-limitations.adoc` – guardrails for relative binds, secrets, automation throttles, and regen mechanics.
 
 == Front-End Visual Layout
 

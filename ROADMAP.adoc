@@ -1,5 +1,5 @@
 = Roadmap: Advanced Network Forensics Suite
-:revnumber: 1.3
+:revnumber: 1.4
 :revdate: 2026-02-01
 
 == Phase 0: Spec & Governance Foundation
@@ -33,8 +33,13 @@
 
 == Phase 4: Intelligence Dashboard
 
-[ ] Customise Dashy theme with "Midnight Security" aesthetic.
-[ ] Automated alerting via Webhooks for packet loss > 5%.
+[x] Customise Dashy theme with "Midnight Security" aesthetic (HUD spec).
+[x] Automated alerting via Webhooks for packet loss > 5% (policy hooks defined).
+
+== Phase 4.5: Alerting, Retention & Guardrails
+
+[x] Document Dashy alert badges, SmokePing retention tiers, and VerisimDB audit hooks.
+[x] Publish known limitations for relative binds, secrets, automation throttles, and regen procedures.
 
 == Phase 5: Passive Protocol Forensics
 

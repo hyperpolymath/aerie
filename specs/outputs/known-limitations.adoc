@@ -1,0 +1,23 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+= Known Limitations & Guardrails
+:toc:
+:toclevels: 2
+
+== Purpose
+
+Spell out the non-negotiable guardrails so teams understand which knobs are intentionally locked and why.
+
+== Limitations
+
+* **Relative bind mounts are disallowed.** Vörðr MCP canonicalises named volumes under the project root, so relative paths would escape the curated directory tree and break volume cleanup; use absolute paths or named volumes, and check the rejection logs if a compose file is rejected.
+* **Secrets default to file mounts.** `SELUR_DEV_SECRETS=1` enables a noisy developer mode that prints warnings before injecting env vars; for production, mount secrets under `/run/secrets` so they never appear in logs.
+* **Cloudflare automation runs are rate-limited.** Speedtest endpoints throttle bots, so CF-NDS exposes internal LibreSpeed/OpenSpeedTest hosts and policy-controlled API routes to stay reliable without hitting the CDN’s protection.
+* **Spec outputs are auto-generated.** All `specs/outputs/*.adoc` files are regenerated through `just specs` (updates `manifest.sha256` and reapplies banners) and remain read-only; manual edits get rejected to prevent drift.
+
+== Guardrails
+
+* Run `just specs` whenever a component changes, then commit the updated manifest before pushing.
+* Config validation (SELUR_DEV_SECRETS, volume checks) ensures drift from these limitations is logged and cannot silently slip into production.
+* Known limitations are surfaced inside the Dashy “Known Issues” panel and referenced in the repository’s README/ROADMAP for visibility.
