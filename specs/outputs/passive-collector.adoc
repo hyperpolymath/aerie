@@ -1,0 +1,27 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Passive Collector
+:toc:
+:toclevels: 2
+
+== Purpose
+
+Deploy Zeek or Suricata in listen‑only mode to capture protocol‑level
+telemetry without interfering with traffic.
+
+== Engines
+
+* Zeek
+* Suricata
+
+== Mode
+
+* Listen‑only (no packet injection)
+
+== Data Pipeline
+
+* Collector → normaliser → Verisim temporal (bitemporal)
+* Collector → graph enricher → Arango (path/ASN)
+

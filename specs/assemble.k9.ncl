@@ -9,6 +9,8 @@ let transport = import "components/subscription-transport.k9.ncl" in
 let gate = import "components/resolver-policy-gate.k9.ncl" in
 let auth = import "components/subscription-auth-flow.k9.ncl" in
 let vql = import "components/vql-mapping.k9.ncl" in
+let osi = import "components/osi-forensics-matrix.k9.ncl" in
+let collector = import "components/passive-collector.k9.ncl" in
 
 {
   components = {
@@ -20,6 +22,8 @@ let vql = import "components/vql-mapping.k9.ncl" in
     gate = gate,
     auth = auth,
     vql = vql,
+    osi = osi,
+    collector = collector,
   },
 
   outputs = [
@@ -31,6 +35,8 @@ let vql = import "components/vql-mapping.k9.ncl" in
     "outputs/resolver-policy-gate.adoc",
     "outputs/subscription-auth-flow.adoc",
     "outputs/vql-mapping.adoc",
+    "outputs/osi-forensics-matrix.adoc",
+    "outputs/passive-collector.adoc",
   ],
 
   notes = [

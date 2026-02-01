@@ -1,0 +1,50 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= OSI Forensics Matrix
+:toc:
+:toclevels: 2
+
+== OSI Forensic Visibility Matrix
+
+[cols="1,2,2",options="header"]
+|===
+| OSI Layer | Passive (Listening) | Active (Probing)
+
+| L7 Application
+| Capture headers, DNS leaks, TLS SNI hostnames
+| Banner grabbing, HTTP status checks, API fuzzing, cipher audits
+
+| L6 Presentation
+| Identify encoding types and cleartext patterns
+| Protocol downgrade tests (TLS 1.0), encoding vulnerability checks
+
+| L5 Session
+| Track session durations, retransmits, keep-alives
+| Simulate timeouts, validate token/session hijack resistance
+
+| L4 Transport
+| TCP/UDP flows, SYN/ACK/FIN patterns
+| Port scans, MTU discovery, half-open limits
+
+| L3 Network
+| BGP monitoring, ASN path changes
+| Ping/Traceroute/MTR, TTL OS fingerprinting
+
+| L2 Data Link
+| MAC OUI lookup, ARP table changes
+| ARP scanning for hidden devices
+
+| L1 Physical
+| SNR, link speed, cable/SFP telemetry
+| Path redundancy tests, electrical/optical error rates
+|===
+
+== HUD Widgets
+
+* Hardware Health (L1/L2) — NIC throughput, error rates, SFP telemetry
+* Route Map (L3) — GeoIP hop map with anomaly highlighting
+* Port Heatmap (L4) — port activity grid
+* Header Stream (L7) — User‑Agents and Hostnames ticker
+
