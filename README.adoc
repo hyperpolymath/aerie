@@ -1,0 +1,14 @@
+= Aerie
+
+Aerie is a custom network diagnostic suite designed to surpass the limitations of the standard Cloudflare speedtest. The focus is on advanced network forensics and long-term stability monitoring rather than just momentary bandwidth metrics.
+
+== Architecture blueprint
+
+This project moves away from browser-based limitations to a server-side probe system (a "Looking Glass"):
+
+* *Advanced forensics*: Use tools like Hyperglass to perform true traceroutes and BGP queries to identify exactly where peering or routing issues occur.
+* *Historical analysis*: Implement SmokePing to track latency and packet loss over long periods, allowing patterns in connection instability that a simple speedtest would miss.
+* *Custom speed engines*: Use LibreSpeed or OpenSpeedTest for dedicated, self-hosted telemetry without third-party interference.
+* *Security integration*: Centralise these tools behind a hardened dashboard (like Dashy or Heimdall) and potentially integrate the Cloudflare WAF and API Shield configurations discussed for other projects.
+
+This approach transforms a simple speedtest into a cybersecurity-minded diagnostic tool, providing the raw data needed to investigate network anomalies or potential routing interference.
