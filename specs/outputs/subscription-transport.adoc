@@ -1,0 +1,36 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Aerie Subscription Transport
+:toc:
+:toclevels: 2
+
+== Purpose
+
+Realtime module streams use WebSocket and SSE transports. Each event includes a
+proof envelope and policy headers are required at connection time.
+
+== Supported Protocols
+
+* WebSocket (primary)
+* SSE (fallback)
+
+== Authentication Headers
+
+* `Authorization`
+* `X-Entitlement-Policy`
+* `X-Policy-Hash`
+
+== Reconnect Policy
+
+* Initial backoff: 500ms
+* Max backoff: 5s
+* Jitter: enabled
+
+== Event Framing
+
+* Heartbeat: 15s
+* Max batch size: 100
+* Proof envelope required on every event payload
+

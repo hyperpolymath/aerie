@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+"$REPO_ROOT/specs/tools/check_manifest.sh"
+
+# Block commits if outputs changed without manifest update
+if git -C "$REPO_ROOT" diff --cached --name-only | grep -q "^specs/outputs/"; then
+  if ! git -C "$REPO_ROOT" diff --cached --name-only | grep -q "^specs/manifest.sha256$"; then
+    echo "specs/outputs changed but specs/manifest.sha256 not updated." >&2
+    echo "Run: specs/tools/update_manifest.sh" >&2
+    exit 1
+  fi
+fi

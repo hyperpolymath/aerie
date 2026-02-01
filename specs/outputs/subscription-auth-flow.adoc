@@ -1,0 +1,28 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Subscription Auth Flow
+:toc:
+:toclevels: 2
+
+== Handshake
+
+1) Client connects (WebSocket or SSE)
+2) Client sends auth headers
+3) Gateway verifies entitlement policy
+4) Claims checked for module scope
+5) Subscription accepted
+6) Events stream with proof envelope
+
+== Required Headers
+
+* Authorization
+* X‑Entitlement‑Policy
+* X‑Policy‑Hash
+
+== Proofs
+
+* Light proof on every event by default
+* Full proof on request for audit/forensics
+

@@ -1,0 +1,6 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Spec Fragments
+
+This folder holds optional spec fragments (tables, schema snippets, policy
+text) that components can import when needed.
+

@@ -1,13 +1,11 @@
 ;; SPDX-License-Identifier: PMPL-1.0-or-later
-;; NEUROSYM.scm - Neurosymbolic integration config for rsr-template-repo
+;; NEUROSYM.scm - Neuro-symbolic considerations for aerie
 
-(define neurosym-config
-  `((version . "1.0.0")
-    (symbolic-layer
-      ((type . "scheme")
-       (reasoning . "deductive")
-       (verification . "formal")))
-    (neural-layer
-      ((embeddings . false)
-       (fine-tuning . false)))
-    (integration . ())))
+(neurosym
+  (goals
+    ("Explainable forensics from routing and telemetry data")
+    ("Proof-carrying query results"))
+
+  (constraints
+    ("No opaque telemetry collection")
+    ("Proof envelope required on all results")))

@@ -1,22 +1,36 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
-= YOUR Template Repo Roadmap
+= Roadmap: Advanced Network Forensics Suite
+:revnumber: 1.2
+:revdate: 2026-02-01
 
-== Current Status
+== Phase 0: Spec & Governance Foundation
 
-Initial development phase.
+[x] Bottom-up K9 specs system with guarded outputs.
+[x] GraphQL schema outline with module-scoped subscriptions.
+[x] Proof envelope spec (light/full) for all responses.
+[x] Resolver policy gate and subscription auth flow.
+[x] Bitemporal storage plan (valid-time + tx-time).
 
-== Milestones
+== Phase 1: Core Telemetry & Containment
 
-=== v0.1.0 - Foundation
-* [ ] Core functionality
-* [ ] Basic documentation
-* [ ] CI/CD pipeline
+[x] Finalise Oxford British English documentation standards.
+[x] Select toolchain: LibreSpeed (Speed), Hyperglass (Path), SmokePing (Stability).
+[ ] Initial docker-compose.yml defining the "Forensics Bridge" network.
+[ ] GraphQL gateway scaffold with policy gate (entitlements).
 
-=== v1.0.0 - Stable Release
-* [ ] Full feature set
-* [ ] Comprehensive tests
-* [ ] Production ready
+== Phase 2: Historical Integrity & Forensics
 
-== Future Directions
+[ ] Implement SmokePing "Smoke" charts to identify 24h jitter patterns.
+[ ] Configure Hyperglass nodes for multi-region path auditing.
+[ ] Setup persistent Docker volumes for forensic log retention.
+[ ] Wire VerisimDB temporal modality for bitemporal audit.
 
-_To be determined based on community feedback._
+== Phase 3: Hardening & Shielding
+
+[ ] Deploy Cloudflare API Shield to protect the diagnostic endpoints.
+[ ] Integrate Ed448-signed logging for tamper-proof audit trails.
+[ ] Implement mTLS (Mutual TLS) for dashboard access.
+
+== Phase 4: Intelligence Dashboard
+
+[ ] Customise Dashy theme with "Midnight Security" aesthetic.
+[ ] Automated alerting via Webhooks for packet loss > 5%.

@@ -1,0 +1,26 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Resolver Policy Gate
+:toc:
+:toclevels: 2
+
+== Purpose
+
+All GraphQL resolvers are protected by a policy gate. Requests without a valid
+A2ML‑attested entitlement policy are rejected before any resolver runs.
+
+== Enforcement Order
+
+1) Extract entitlement policy
+2) Verify policy signature
+3) Validate policy profile
+4) Check module claims
+5) Emit proof envelope
+
+== Failure Mode
+
+* Fail‑closed (deny by default)
+* All decisions are logged with policy hash
+

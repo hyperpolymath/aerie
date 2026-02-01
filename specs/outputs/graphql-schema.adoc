@@ -1,0 +1,152 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Aerie GraphQL Schema Outline
+:toc:
+:toclevels: 2
+
+== Intent
+
+GraphQL is the user-facing API. VQL executes behind resolvers. Subscriptions are
+granular per module and carry a proof envelope on every payload.
+
+== Core Types (Outline)
+
+[source]
+----
+scalar DateTime
+scalar JSON
+
+interface ProofEnvelope {
+  resultHash: String!
+  policyHash: String!
+  queryId: ID!
+  issuedAt: DateTime!
+  proofType: String!  # light | full
+  signature: String!
+}
+
+type ProofEnvelopeLight implements ProofEnvelope {
+  resultHash: String!
+  policyHash: String!
+  queryId: ID!
+  issuedAt: DateTime!
+  proofType: String!
+  signature: String!
+}
+
+type ProofEnvelopeFull implements ProofEnvelope {
+  resultHash: String!
+  policyHash: String!
+  queryId: ID!
+  issuedAt: DateTime!
+  proofType: String!
+  signature: String!
+  a2mlAttestation: JSON!
+  vqlProof: JSON!
+}
+
+type TelemetrySample {
+  timestamp: DateTime!
+  latencyMs: Float!
+  jitterMs: Float!
+  packetLoss: Float!
+}
+
+type RouteHop {
+  hop: Int!
+  ip: String!
+  asn: String
+  rttMs: Float
+}
+
+type AuditEvent {
+  eventId: ID!
+  validTime: DateTime!
+  txTime: DateTime!
+  severity: String!
+  message: String!
+  tags: [String!]!
+}
+
+# Module-gated payloads
+
+type TelemetryPayload {
+  data: [TelemetrySample!]!
+  proof: ProofEnvelope!
+}
+
+type RouteForensicsPayload {
+  path: [RouteHop!]!
+  proof: ProofEnvelope!
+}
+
+type AuditPayload {
+  events: [AuditEvent!]!
+  proof: ProofEnvelope!
+}
+----
+
+== Queries (Outline)
+
+[source]
+----
+# Each query enforces policy-based entitlements before execution
+
+type Query {
+  telemetrySnapshot: TelemetryPayload!
+  routeForensicsSnapshot(target: String!): RouteForensicsPayload!
+  auditSnapshot(limit: Int = 50): AuditPayload!
+}
+----
+
+== Subscriptions (Granular Modules)
+
+[source]
+----
+# Each subscription is module-scoped for enterprise gating
+
+type Subscription {
+  telemetryStream: TelemetryPayload!
+  routeForensicsStream(target: String!): RouteForensicsPayload!
+  auditAttestedStream: AuditPayload!
+}
+----
+
+== Resolver Mapping (VQL Behind the Scenes)
+
+[cols="1,2",options="header"]
+|===
+| GraphQL Field | VQL Execution Path
+
+| telemetrySnapshot
+| VQL slipstream (temporal modality) + light proof envelope
+
+| routeForensicsSnapshot
+| VQL proved query (graph modality) + full proof envelope
+
+| auditSnapshot
+| VQL proved query (temporal + semantic) + full proof envelope
+
+| telemetryStream
+| VQL slipstream subscription + light proof envelope
+
+| routeForensicsStream
+| VQL proved subscription + full proof envelope
+
+| auditAttestedStream
+| VQL proved subscription + full proof envelope
+|===
+
+== Subscription Model
+
+* Granular per module (enterprise modules map 1:1 to streams)
+* Realtime via WebSockets/SSE (not RTSP)
+* Proof envelope required on all payloads
+
+== Notes
+
+* Slipstream path for realtime; full proofs for audit/forensics.
+* Every payload includes a proof envelope.
+

@@ -1,0 +1,42 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= VQL Mapping
+:toc:
+:toclevels: 2
+
+== Purpose
+
+GraphQL fields map to VQL queries and subscriptions. Proof tier is selected per
+field to balance realtime performance and audit strength.
+
+[cols="1,2,1",options="header"]
+|===
+| GraphQL Field | VQL | Proof
+
+| telemetrySnapshot
+| FROM verisim:temporal WHERE metric = 'telemetry' LIMIT 1
+| light
+
+| routeForensicsSnapshot
+| FROM verisim:graph WHERE target = $target PROOF strict
+| full
+
+| auditSnapshot
+| FROM verisim:temporal WHERE kind = 'audit' PROOF strict
+| full
+
+| telemetryStream
+| SUBSCRIBE verisim:temporal WHERE metric = 'telemetry'
+| light
+
+| routeForensicsStream
+| SUBSCRIBE verisim:graph WHERE target = $target PROOF strict
+| full
+
+| auditAttestedStream
+| SUBSCRIBE verisim:temporal WHERE kind = 'audit' PROOF strict
+| full
+|===
+

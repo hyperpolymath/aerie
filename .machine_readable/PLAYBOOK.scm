@@ -1,13 +1,13 @@
 ;; SPDX-License-Identifier: PMPL-1.0-or-later
-;; PLAYBOOK.scm - Operational runbook for rsr-template-repo
+;; PLAYBOOK.scm - Operational playbook for aerie
 
-(define playbook
-  `((version . "1.0.0")
-    (procedures
-      ((deploy . (("build" . "just build")
-                  ("test" . "just test")
-                  ("release" . "just release")))
-       (rollback . ())
-       (debug . ())))
-    (alerts . ())
-    (contacts . ())))
+(playbook
+  (operational-flows
+    ("Policy-gated GraphQL requests")
+    ("Realtime subscription streams with proofs")
+    ("Bitemporal audit retrieval"))
+
+  (guardrails
+    ("Always regenerate specs outputs via K9")
+    ("Never bypass entitlement checks")
+    ("Record tx_time for all audit events")))

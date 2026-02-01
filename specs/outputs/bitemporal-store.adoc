@@ -1,0 +1,29 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Aerie Bitemporal Storage
+:toc:
+:toclevels: 2
+
+== Purpose
+
+Aerie requires bitemporal history for forensic certainty: valid-time and
+transaction-time are both recorded and queryable.
+
+== Store
+
+* Modality: Verisim Temporal
+* Model: hexad_id + valid_time + tx_time
+
+== Indexes
+
+* (hexad_id, valid_time)
+* (hexad_id, tx_time)
+* (policy_hash, tx_time)
+
+== Notes
+
+* All audit events are stored with both timestamps.
+* Proof envelopes must reference tx_time.
+

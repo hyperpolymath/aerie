@@ -1,16 +1,13 @@
 ;; SPDX-License-Identifier: PMPL-1.0-or-later
-;; AGENTIC.scm - AI agent interaction patterns for rsr-template-repo
+;; AGENTIC.scm - Agentic contract for aerie
 
-(define agentic-config
-  `((version . "1.0.0")
-    (claude-code
-      ((model . "claude-opus-4-5-20251101")
-       (tools . ("read" "edit" "bash" "grep" "glob"))
-       (permissions . "read-all")))
-    (patterns
-      ((code-review . "thorough")
-       (refactoring . "conservative")
-       (testing . "comprehensive")))
-    (constraints
-      ((languages . ())
-       (banned . ("typescript" "go" "python" "makefile"))))))
+(agentic
+  (principles
+    ("Proofs on all responses")
+    ("Fail-closed entitlement enforcement")
+    ("Spec-first changes with guarded outputs"))
+
+  (automation
+    ("K9 component assembly")
+    ("Specs manifest verification")
+    ("Pre-commit guard for outputs")))

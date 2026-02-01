@@ -1,20 +1,26 @@
 ;; SPDX-License-Identifier: PMPL-1.0-or-later
-;; ECOSYSTEM.scm - Ecosystem position for rsr-template-repo
+;; ECOSYSTEM.scm - Ecosystem position for aerie
 ;; Media-Type: application/vnd.ecosystem+scm
 
 (ecosystem
   (version "1.0")
-  (name "rsr-template-repo")
-  (type "")
-  (purpose "")
+  (name "aerie")
+  (type "security-diagnostics")
+  (purpose "Cyber-focused network diagnostics with forensic-grade evidence")
 
   (position-in-ecosystem
-    (category "")
-    (subcategory "")
-    (unique-value ()))
+    (category "security")
+    (subcategory "network-forensics")
+    (unique-value ("proof-enveloped telemetry" "policy-based module entitlements")))
 
-  (related-projects ())
+  (related-projects
+    ("svalinn" "vordr" "cerro-torre" "selur" "verisimdb" "a2ml" "k9-svc"))
 
-  (what-this-is ())
+  (what-this-is
+    ("Network diagnostics platform"
+     "Forensic-grade telemetry suite"
+     "Policy-gated realtime dashboard"))
 
-  (what-this-is-not ()))
+  (what-this-is-not
+    ("Commodity speedtest clone"
+     "Third-party telemetry collector")))

@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Aerie Specs (K9 SVC, Bottom-Up)
+:toc:
+:toclevels: 3
+
+This folder holds the **bottom-up specification system** for Aerie. Specs are
+composed from K9 SVC components (Yard-level Nickel) and rendered into
+human-readable AsciiDoc outputs.
+
+== Why This Layout
+
+* **Bottom-up integration**: small K9 components define one concern each.
+* **Self-validating**: components carry their own pedigree + contracts.
+* **Human-friendly**: rendered AsciiDoc outputs live in `specs/outputs/`.
+* **Federation-ready**: inputs cite A2ML + VeriSimDB + Svalinn + K9 SVC sources.
+
+== Source Inputs (Authoritative)
+
+These components are intentionally built from upstream sources. We keep paths
+explicit so the provenance is clear and auditable.
+
+* A2ML specs: `/var/mnt/eclipse/repos/a2ml/`
+* VeriSimDB VQL + federation docs: `/var/mnt/eclipse/repos/verisimdb/docs/`
+* Svalinn schemas (run v2): `/var/mnt/eclipse/repos/svalinn/spec/schemas/`
+* K9 SVC contracts: `/var/mnt/eclipse/repos/k9-svc/`
+
+If you mirror or move repos, update the paths in each component.
+
+== Structure
+
+* `k9/` - local copy of `pedigree.ncl` (K9 contracts)
+* `components/` - Yard-level K9 components (Nickel)
+* `fragments/` - optional sub-fragments used by components
+* `outputs/` - rendered AsciiDoc specifications
+* `assemble.k9.ncl` - merges components into a single spec bundle
+
+== How It Works (Conceptual)
+
+1) Each component imports `k9/pedigree.ncl`.
+2) Components declare metadata + validation contracts.
+3) `assemble.k9.ncl` imports components and emits a unified spec object.
+4) Outputs are written to `specs/outputs/` for human review.
+
+
+== Protection Against Manual Edits
+
+Use the guard scripts to keep generated outputs safe:
+
+* `just specs` — apply banners and update `specs/manifest.sha256`
+* `just specs-check` — verify outputs match the manifest
+* `just specs-hooks` — install pre-commit hook that blocks stale outputs
+
+* `specs/tools/unlock_outputs.sh` — temporarily unlock outputs for editing
+
+CI:
+* `.github/workflows/specs-guard.yml` verifies the manifest on push/PR
+
+The pre-commit hook refuses commits where `specs/outputs/` changes without an
+updated `specs/manifest.sha256`.
+
+== Notes
+
+* Components are **Yard-level only** (no execution).
+* Proof requirements are included in every output.
+* Module entitlements are **policy-based from day 1**.
+

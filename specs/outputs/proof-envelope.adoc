@@ -1,0 +1,46 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Aerie Proof Envelope
+:toc:
+:toclevels: 2
+
+== Overview
+
+Every response includes a proof envelope. Realtime streams use a light envelope.
+Forensics and audit use a full envelope with A2ML attestation + VQL proof.
+
+== Fields
+
+[cols="1,2",options="header"]
+|===
+| Field | Description
+
+| result_hash
+| sha256 of the payload
+
+| policy_hash
+| sha256 of the entitlement policy
+
+| query_id
+| UUID for query/subscription event
+
+| issued_at
+| RFC3339 timestamp (tx_time reference)
+
+| proof_type
+| light or full
+
+| signature
+| Ed25519 signature over envelope
+|===
+
+== Light Envelope
+
+Includes: result_hash, policy_hash, query_id, issued_at, signature
+
+== Full Envelope
+
+Includes: light fields plus A2ML attestation + VQL proof blob
+

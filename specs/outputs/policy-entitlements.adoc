@@ -1,0 +1,47 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Aerie Policy Entitlements
+:toc:
+:toclevels: 2
+
+== Purpose
+
+Policy-based module entitlements are enforced at the GraphQL gateway. All
+queries and subscriptions require a valid A2ML-attested entitlement policy.
+
+== Enforcement
+
+* Policy format: A2ML profile
+* Enforced at: GraphQL gateway (pre-resolver)
+* Proof required: Yes (light or full envelope)
+
+== Module Catalog
+
+[cols="1,2,2",options="header"]
+|===
+| Module ID | Name | Required Claims
+
+| core.telemetry
+| Core Telemetry
+| telemetry:read
+
+| forensics.routes
+| Route Forensics
+| forensics:read
+
+| audit.attested
+| Attested Audit
+| audit:read
+|===
+
+== Source Inputs
+
+* /var/mnt/eclipse/repos/a2ml/SPEC.adoc
+* /var/mnt/eclipse/repos/a2ml/SPEC.a2ml
+* /var/mnt/eclipse/repos/verisimdb/docs/vql-type-system.adoc
+* /var/mnt/eclipse/repos/verisimdb/docs/vql-architecture.adoc
+* /var/mnt/eclipse/repos/svalinn/spec/schemas/gateway-run-request.v2.json
+* /var/mnt/eclipse/repos/k9-svc/SPEC.adoc
+
