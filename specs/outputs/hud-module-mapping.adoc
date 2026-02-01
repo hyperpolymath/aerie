@@ -1,0 +1,35 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= HUD Module Mapping
+:toc:
+:toclevels: 2
+
+== Widget Mapping
+
+[cols="1,2,2,2",options="header"]
+|===
+| Widget | OSI Layers | Module | Data Sources
+
+| Hardware Health
+| L1, L2
+| core.telemetry
+| nic-telemetry, sfp-telemetry
+
+| Route Map
+| L3
+| forensics.routes
+| bgp-updates, mtr-paths, geoip
+
+| Port Heatmap
+| L4
+| forensics.routes
+| flow-logs, port-scan-results
+
+| Header Stream
+| L7
+| audit.attested
+| sni-headers, user-agents
+|===
+

@@ -11,6 +11,8 @@ let auth = import "components/subscription-auth-flow.k9.ncl" in
 let vql = import "components/vql-mapping.k9.ncl" in
 let osi = import "components/osi-forensics-matrix.k9.ncl" in
 let collector = import "components/passive-collector.k9.ncl" in
+let hud = import "components/hud-module-mapping.k9.ncl" in
+let gate_impl = import "components/resolver-policy-gate-impl.k9.ncl" in
 
 {
   components = {
@@ -24,6 +26,8 @@ let collector = import "components/passive-collector.k9.ncl" in
     vql = vql,
     osi = osi,
     collector = collector,
+    hud = hud,
+    gate_impl = gate_impl,
   },
 
   outputs = [
@@ -37,6 +41,8 @@ let collector = import "components/passive-collector.k9.ncl" in
     "outputs/vql-mapping.adoc",
     "outputs/osi-forensics-matrix.adoc",
     "outputs/passive-collector.adoc",
+    "outputs/hud-module-mapping.adoc",
+    "outputs/resolver-policy-gate-impl.adoc",
   ],
 
   notes = [

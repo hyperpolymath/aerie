@@ -1,0 +1,43 @@
+// GENERATED FILE - DO NOT EDIT
+// Source: specs/components/*.k9.ncl
+// Regenerate: specs/tools/update_manifest.sh
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Resolver Policy Gate (Implementation Skeleton)
+:toc:
+:toclevels: 2
+
+== Overview
+
+Minimal skeleton for the GraphQL entitlement gate. Enforces policy before any
+resolver runs, emits a proof envelope, and logs the decision.
+
+== Pseudocode (Gateway Middleware)
+
+[source]
+----
+function entitlementGate(request, moduleId):
+  policy = parseHeader("X-Entitlement-Policy")
+  policyHash = parseHeader("X-Policy-Hash")
+  authz = parseHeader("Authorization")
+
+  if not verifySignature(policy):
+    deny("invalid policy signature")
+
+  if hash(policy) != policyHash:
+    deny("policy hash mismatch")
+
+  if not policy.allows(moduleId, authz):
+    deny("entitlement missing")
+
+  proof = makeProofEnvelope(light=true, policyHash=policyHash)
+  auditLog(decision="allow", policyHash=policyHash, proof=proof)
+
+  return allowWithProof(proof)
+----
+
+== Enforcement Notes
+
+* Fail‑closed by default
+* Proof envelope required on every response
+* Audit log written with tx_time and policy hash
+
