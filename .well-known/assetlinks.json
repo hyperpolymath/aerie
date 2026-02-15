@@ -1,0 +1,13 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.yourdomain.app",
+    "sha256_cert_fingerprints": [
+      "SHA256_FINGERPRINT_OF_YOUR_APP"
+    ],
+    "shake256_cert_fingerprints": [
+      "BASE32_ENCODED_SHAKE256_FINGERPRINT"
+    ]
+  }
+}]

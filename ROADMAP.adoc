@@ -47,3 +47,29 @@
 [ ] Map L4 flow data to realtime heatmap.
 [ ] Implement L7 SNI sniffing for encrypted destinations.
 [ ] Build OSI-layered status bar for the HUD.
+
+== Phase 6: Proposed Architectural Enhancements
+
+=== PAN (Personal Area Network) Enhancements: The "Last Meter"
+
+[ ] **Bluetooth & BLE Monitoring Module:** Integrate a Bluetooth scanner to discover and monitor nearby PAN devices (headsets, IoT sensors), showing signal strength and latency in a new dashboard widget.
+[ ] **USB Device Auditing:** Add a module to inventory connected USB devices and their bus status, helping to identify faulty hardware causing network-related issues.
+[ ] **Wi-Fi Direct / Ad-hoc Network Analysis:** A module to detect and analyze local peer-to-peer networks used by services like screen mirroring.
+
+=== LAN (Local Area Network) Enhancements: Mastering the Local Environment
+
+[ ] **Physical Layer Topology Mapping (LLDP/CDP):** Implement a listener for LLDP/CDP to create a dynamic, interactive map of the physical network topology (e.g., which server is on which switch port).
+[ ] **DHCP & DNS Server Auditing:** A module to actively monitor the health and response times of local DHCP and DNS servers.
+[ ] **UPnP/SSDP Monitoring:** A security-focused widget that listens for and logs all UPnP and SSDP broadcasts to identify insecure devices opening ports.
+
+=== MAN (Metropolitan Area Network) & WAN (Wide Area Network) Enhancements: Beyond the Edge
+
+[ ] **Distributed Probes / "Aerie Agents":** Develop lightweight, secure probes for remote deployment in cloud VPCs or remote offices, enabling a full mesh of performance testing.
+[ ] **Internet Weather & Major Outage Aggregation:** Integrate with public internet outage dashboards (e.g., Cloudflare Radar) to cross-reference local issues with global events.
+[ ] **IXP (Internet Exchange Point) Path Analysis:** Enhance BGP path analysis to specifically identify and flag when traffic traverses major public IXPs.
+
+=== Holistic & Security Enhancements
+
+[ ] **Historical Network "Time Machine":** Implement a "Time Travel" mode in the UI, allowing the user to view the entire dashboard's state at any specific point in the past.
+[ ] **SCADA/OT Network Monitoring Mode:** A "Passive-Only" mode that disables all active probes to allow for safe deployment in sensitive industrial environments.
+[ ] **Post-Quantum Cryptography for Agents:** Use PQC algorithms (e.g., Kyber/Dilithium) for securing communication between the central Aerie instance and its distributed probes.

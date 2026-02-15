@@ -1,15 +1,114 @@
+;; This document defines the core security requirements and DNS configuration for the Aerie project.
+;; It serves as the "single source of truth" for policies and infrastructure,
+;; intended to be consumed by the A2ML framework for formal verification and automation.
 
-# AI Assistant Instructions
+(define user-security-requirements
+  '(
+    ;; Category, Algorithm/Standard, NIST/FIPS Standard, Notes
+    (PasswordHashing "Argon2id (512 MiB, 8 iter, 4 lanes)" "—" "Max memory/iterations for GPU/ASIC resistance; aligns with proactive security stance.")
+    (GeneralHashing "SHAKE3-512 (512-bit output)" "FIPS 202" "Post-quantum; use for provenance, key derivation, and long-term storage.")
+    (PQSignatures "Dilithium5-AES (hybrid)" "ML-DSA-87 (FIPS 204)" "Hybrid with AES-256 for belt-and-suspenders security. SPHINCS+ as conservative backup.")
+    (PQKeyExchange "Kyber-1024 + SHAKE256-KDF" "ML-KEM-1024 (FIPS 203)" "Kyber-1024 for KEM, SHAKE256 for key derivation. SPHINCS+ as backup.")
+    (ClassicalSigs "Ed448 + Dilithium5 (hybrid)" "—" "Ed448 for classical compatibility; Dilithium5 for PQ. SPHINCS+ as backup. Terminate Ed25519/SHA-1 immediately.")
+    (Symmetric "XChaCha20-Poly1305 (256-bit key)" "—" "Larger nonce space; 256-bit keys for quantum margin.")
+    (KeyDerivation "HKDF-SHAKE512" "FIPS 202" "Post-quantum KDF; use with all secret key material.")
+    (RNG "ChaCha20-DRBG (512-bit seed)" "SP 800-90Ar1" "CSPRNG for deterministic, high-entropy needs.")
+    (UserFriendlyHashNames "Base32(SHAKE256(hash)) → Wordlist" "—" "Memorable, deterministic mapping (e.g., \"Gigantic-Giraffe-7\" for drivers).")
+    (DatabaseHashing "BLAKE3 (512-bit) + SHAKE3-512" "—" "BLAKE3 for speed, SHAKE3-512 for long-term storage (semantic XML/ARIA tags).")
+    (SemanticXMLGraphQL "Virtuoso (VOS) + SPARQL 1.2" "—" "Supports WCAG 2.3 AAA, ARIA, and formal verification for accessibility/compliance.")
+    (VMExecution "GraalVM (with formal verification)" "—" "Aligns with preference for introspective, reversible design.")
+    (ProtocolStack "QUIC + HTTP/3 + IPv6 (IPv4 disabled)" "—" "Terminate HTTP/1.1, IPv4, and SHA-1 per \"danger zone\" policy.")
+    (Accessibility "WCAG 2.3 AAA + ARIA + Semantic XML" "—" "CSS-first, HTML-second; full compliance with accessibility requirements.")
+    (Fallback "SPHINCS+" "—" "Conservative PQ backup for all hybrid classical+PQ systems; use if primary PQ algorithm is ever compromised.")
+    (FormalVerification "Coq/Isabelle (for crypto primitives)" "—" "Proactive attestation and transparent logic per system design principles.")
+  )
+)
 
-## Repository Focus
-- `rsr-template-repo` is treated as a Rhodium Standard Repository; obey the Rhodium policies, maintain `.bot_directives`, and keep `.machines_readable/6scm/` authoritative.
-- Prefer to keep generated files out of source control, and regenerate them with the documented commands before committing.
+;; Cloudflare DNS Zone File for example.com (Jonathan Jewell)
+;; Security-hardened, GitHub Pages + Cloudflare + Zero Trust/SDP
+;; All records active and optimized for security/dependability
 
-## Workflow
-1. Inspect `.machines_readable/6scm/STATE.scm` for blockers and next actions.
-2. Respect any constraints listed inside `.machines_readable/6scm/AGENTIC.scm` when tooling changes are requested.
-3. After finishing edits, update STATE with your outcomes and commit with a concise, imperative message.
+(define dns-zone-file
+  '(
+    (@       IN  SOA     ns1.cloudflare.com. admin.example.com. (
+                2026013102  ; Serial (YYYYMMDDNN)
+                10800       ; Refresh
+                3600        ; Retry
+                604800      ; Expire
+                3600        ; Minimum TTL
+            ))
 
-## Delivery Promises
-- Mention in summaries whether STATE, `contractiles/`, or `.bot_directives/` changed.
-- Keep this file in sync with the repository’s status; update it if the governance changes.
+    ;; --- Core Records (Proxied) ---
+    (@       IN  A        192.0.2.1)      ; Root domain (proxied)
+    (@       IN  AAAA     2001:db8::1)    ; IPv6 for root (proxied)
+    (www     IN  A        192.0.2.1)      ; www (proxied)
+    (www     IN  AAAA     2001:db8::1)    ; IPv6 for www (proxied)
+    (static  IN  CNAME    example.com.)  ; Static assets (proxied)
+    (assets  IN  CNAME    example.com.)  ; Dedicated assets subdomain (proxied)
+    (cdn     IN  CNAME    example.com.)  ; CDN subdomain (proxied)
+
+    ;; --- GitHub Pages (Required) ---
+    (gh-pages IN  CNAME   username.github.io.)  ; GitHub Pages source (NOT proxied)
+
+    ;; --- Security & Compliance ---
+    (@       IN  TXT     "v=spf1 include:_spf.github.com ~all")  ; SPF for GitHub Pages
+    (@       IN  TXT     "github-pages-challenge-username=challenge-code")  ; GitHub verification
+    (@       IN  TXT     "v=DMARC1; p=reject; rua=mailto:admin@example.com")  ; DMARC
+    (_dmarc  IN  TXT     "v=DMARC1; p=reject; rua=mailto:admin@example.com")
+    (@       IN  CAA     0 issue "letsencrypt.org")  ; CAA for Let's Encrypt (128 flag omitted for broad compatibility)
+    (@       IN  CAA     0 issue "digicert.com")     ; Fallback CA
+    (@       IN  CAA     0 iodef "mailto:admin@example.com")  ; Incident reporting
+
+    ;; --- HTTPS Enforcement ---
+    (@       IN  TXT     "https-only-standard=max-age=63072000; includeSubDomains; preload")  ; Accelerate HTTPS adoption
+
+    ;; --- Mail (MX + Security) ---
+    (@       IN  MX      10 mail.example.com.)  ; Primary mail server
+    (@       IN  MX      20 fallback-mail.example.com.)  ; Fallback mail server
+    (_smtp._tls  IN  TLSA  3 1 1 d2abde240d7cd3ee6b4b28c54df034b97983a1d16e8a410e4561cb106618e971)  ; TLSA for SMTP (SHA256)
+    (_mta-sts    IN  TXT   "v=STSv1; id=2026013101; mode=enforce")  ; MTA-STS policy
+    (_smtp._tls IN  TXT   "v=TLSRPTv1; rua=mailto:tls-rpt@example.com")  ; TLS-RPT
+    (_smiimea   IN  TXT   "v=SMIMEA1; cert=base64-encoded-cert; alg=sha256; usage=email")  ; SMIMEA
+
+    ;; --- SSHFP (Root Access + Git Cloning) ---
+    (@       IN  SSHFP   1 1 123456789abcdef67890123456789abcdef67890)  ; SHA1 (deprecated but widely supported)
+    (@       IN  SSHFP   1 2 123456789abcdef67890123456789abcdef67890123456789abcdef67890)  ; SHA256
+    (@       IN  SSHFP   2 1 123456789abcdef67890123456789abcdef67890)  ; Backup key (SHA1)
+    (@       IN  SSHFP   2 2 123456789abcdef67890123456789abcdef67890123456789abcdef67890)  ; Backup key (SHA256)
+
+    ;; --- OpenPGP (Keybase/GitHub) ---
+    (openpgp IN  TXT     "url=https://example.com/openpgp.asc")  ; OpenPGP key URL
+    (openpgp IN  URI     10 1 "https://github.com/hyperpolymath.gpg")  ; URI for GitHub-hosted PGP
+
+    ;; --- SFTP/URI (GitHub Files) ---
+    (sftp    IN  URI     10 1 "sftp://username@github.com/path/to/repo")  ; SFTP access URI
+
+    ;; --- Zero Trust/SDP (Cloudflare Tunnel) ---
+    (dashboard.internal  IN  CNAME  tunnel-id.cfargotunnel.com.)  ; Internal dashboard
+    (ci.internal         IN  CNAME  tunnel-id.cfargotunnel.com.)  ; CI/CD access
+    (db.internal         IN  CNAME  tunnel-id.cfargotunnel.com.)  ; Private DB access
+
+    ;; --- Communication (Discourse/Zulip) ---
+    (discourse  IN  CNAME  example.com.)  ; Discourse forum (proxied)
+    (zulip      IN  CNAME  example.com.)  ; Zulip chat (proxied)
+    (members    IN  CNAME  example.com.)  ; Members subdomain (proxied)
+
+    ;; --- Automation & Monitoring ---
+    (ci        IN  CNAME  example.com.)  ; CI/CD status (proxied)
+    (status    IN  CNAME  example.com.)  ; Public status page (proxied)
+    (logs      IN  CNAME  example.com.)  ; Log aggregation (proxied)
+
+    ;; --- Advanced Security (WASM/Proxy) ---
+    (api      IN  CNAME  example.com.)  ; API gateway (proxied, WASM fronted)
+    (auth     IN  CNAME  example.com.)  ; Auth service (proxied)
+    (wasm     IN  CNAME  example.com.)  ; WASM proxy endpoint (proxied)
+
+    ;; --- Fallback/Redundancy ---
+    (fallback  IN  CNAME  backup-hosting.com.)  ; Fallback hosting (NOT proxied)
+    (secondary IN  CNAME  secondary-dns-provider.com.)  ; Secondary DNS (NOT proxied)
+
+    ;; --- External Integrations ---
+    (linkedin  IN  CNAME  example.com.)  ; LinkedIn showcase (proxied)
+    (rss      IN  CNAME  example.com.)  ; RSS feed aggregator (proxied)
+  )
+)

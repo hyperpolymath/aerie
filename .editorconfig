@@ -17,18 +17,6 @@ trim_trailing_whitespace = false
 [*.adoc]
 trim_trailing_whitespace = false
 
-[*.rs]
-indent_size = 4
-
-[*.ex]
-indent_size = 2
-
-[*.exs]
-indent_size = 2
-
-[*.zig]
-indent_size = 4
-
 [*.ada]
 indent_size = 3
 
@@ -38,7 +26,19 @@ indent_size = 3
 [*.ads]
 indent_size = 3
 
+[*.ex]
+indent_size = 2
+
+[*.exs]
+indent_size = 2
+
 [*.hs]
+indent_size = 2
+
+[*.ncl]
+indent_size = 2
+
+[*.nix]
 indent_size = 2
 
 [*.res]
@@ -47,20 +47,13 @@ indent_size = 2
 [*.resi]
 indent_size = 2
 
-[*.ncl]
+[*.rs]
+indent_size = 4
+
+[*.ts]
 indent_size = 2
 
-[*.rkt]
-indent_size = 2
-
-[*.scm]
-indent_size = 2
-
-[*.nix]
-indent_size = 2
-
-[Justfile]
-indent_style = space
+[*.v]
 indent_size = 4
 
 [justfile]

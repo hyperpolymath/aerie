@@ -1,21 +1,141 @@
-# SPDX-License-Identifier: PLMP-1.0-or-later
-# Intentfile template - declared future intent
+Pelican Traits → Cyberwar Principles → Trustfile Implementations
+(A Threat Model for High-Assurance Systems)
+1. Dive from Heights = Precision Strikes
 
-version: 1
+| Pelican Behavior                                     | Adversarial Tactic                                       | Your Countermeasure                                                      | Trustfile Section           |
+|------------------------------------------------------|----------------------------------------------------------|--------------------------------------------------------------------------|-----------------------------|
+| Dives from 30+ feet to strike fish with surgical accuracy | Exploit chains (e.g., phishing → RCE → lateral movement) | Capability-based authorization (OCAP) limits damage to a single, pre-approved action. | [CAPABILITY_GATEWAY]        |
+| Targets only viable prey                             | Spray-and-pray attacks (e.g., mass exploits)             | Formal verification (LEAN4) eliminates entire classes of vulnerabilities (e.g., buffer overflows, TOCTOU). | [LEAN4_PROOFS]              |
+| Uses gravity as a force multiplier                   | Brute-force attacks (e.g., credential stuffing)          | Argon2id (512 MiB, 8 iter, 4 lanes) makes brute-forcing economically infeasible. | [TRUSTFILE].algorithms      |
 
-future:
-  trust-engine:
-    - "Integrate hardware-backed key management."
-    - "Support node attestation for deployments."
+Why it works:
+Adversaries rely on chaining exploits (e.g., steal creds → move laterally → exfiltrate data). Your system denies the chain:
+* No lateral movement: Capabilities are non-transferable (like a pelican’s dive—one shot, one fish).
+* No exploit primitives: LEAN4 proofs ensure memory safety, race-condition freedom, etc.
 
-  control-plane:
-    - "Move to GitOps-backed configuration promotion."
-    - "Add canary and staged rollout support."
+2. Scoop Up Fish = Resource Denial
 
-  pipeline:
-    - "Adopt Nickel (or your DSL) as the primary policy language."
-    - "Automate policy promotion from dev to prod with signed artifacts."
+| Pelican Trait                 | Adversarial Goal                            | Your Countermeasure                                                       | Trustfile Section           |
+|-------------------------------|---------------------------------------------|---------------------------------------------------------------------------|-----------------------------|
+| Scoops entire fish in one motion | Data exfiltration (e.g., ransomware, espionage) | SDP (Software-Defined Perimeter) via CAdRE Router restricts access to pre-authorized "fish" (data/resources). | [ZERO_TRUST/SDP_RULES]      |
+| Swallows fish whole           | Data corruption (e.g., wipers)              | Immutable transparency logs (RFC 9162) + ZoneMD ensure data integrity.    | [TRANSPARENCY_LOG], [DNS].zonemd |
+| Regurgitates for chicks       | Command & Control (C2)                      | Consent-Aware HTTP (CAdRE) requires explicit user consent for data egress. | [DNS]._consent              |
 
-  introspection:
-    - "Expose decision latency and policy evaluation metrics."
-    - "Add tracing for end-to-end request decisions."
+Why it works:
+* No bulk exfiltration: Like a pelican’s pouch, your capability tokens only hold one resource at a time.
+* No silent corruption: ZoneMD + DNSSEC act like a pelican’s beak—any tampering is immediately visible.
+
+3. Flock Behavior = Decentralized Trust
+
+| Pelican Trait         | Adversarial Tactic                         | Your Countermeasure                                                       | Trustfile Section           |
+|-----------------------|--------------------------------------------|---------------------------------------------------------------------------|-----------------------------|
+| Flocks share fishing spots | Sybil attacks (e.g., botnets)              | DIDs (Decentralized Identifiers) + RFC 9162 logs ensure no single node can lie about identity. | [META].id, [TRANSPARENCY_LOG] |
+| Synchronized diving   | Distributed denial-of-service (DDoS)       | Cloudflare Workers + Durable Objects absorb and verify traffic at the edge. | [CLOUDFLARE_OPTIONS]        |
+| Collective vigilance  | Insider threats                            | GitBot-Fleet + Hypatia scans cross-validate changes across the "flock" (team/repos). | [CI_CD], [HYPATIA_SCANS]    |
+
+Why it works:
+* No single point of failure: Like a flock, your transparency logs and DIDs ensure no one node (or admin) can falsify records.
+* Automated consensus: GitBot-Fleet cross-checks changes like pelicans watching for predators.
+
+4. Saltwater Tolerance = Resilience to Corruption
+
+| Pelican Trait                 | Adversarial Tactic                      | Your Countermeasure                                                      | Trustfile Section           |
+|-------------------------------|-----------------------------------------|--------------------------------------------------------------------------|-----------------------------|
+| Thrives in saline environments | Crypto backdoors (e.g., weakened RNG)   | Hybrid PQ crypto (Ed448+Dilithium5) + SPHINCS+ fallback.                 | [TRUSTFILE].keys            |
+| Rinses salt in freshwater     | Supply chain attacks (e.g., malicious dependencies) | PHP-Aegis + Sanctify + Hypatia dependency scans.                         | [PHP_HARDENING]             |
+| Adapts to changing tides      | Crypto agility attacks (e.g., forcing downgrades) | CAA records + TLS 1.3-only + OCSP stapling.                              | [DNS].CAA, [SSL/TLS_CONFIG] |
+
+Why it works:
+* No single crypto failure mode: Like pelicans in fresh/saltwater, your system switches algorithms (e.g., SPHINCS+ if Dilithium5 is broken).
+* No trust in upstream: Hypatia scans verify dependencies like pelicans rinsing salt.
+
+5. Keen Eyesight = Observability
+
+| Pelican Trait               | Adversarial Tactic                | Your Countermeasure                                                      | Trustfile Section           |
+|-----------------------------|-----------------------------------|--------------------------------------------------------------------------|-----------------------------|
+| Spots fish from 60 feet away | Living-off-the-land (LOLBins)     | GitBot-Fleet diffing detects anomalous process trees.                    | [AUTOMATION].diffing        |
+| Tracks movement in water    | Advanced Persistent Threats (APTs) | LEAN4-proven audit logs make stealth impossible.                         | [LEAN4_PROOFS].theorems     |
+| Notices ripples             | Covert channels (e.g., DNS tunneling) | DNS ZoneMD + SVCB/HTTPS records enforce strict protocol use.             | [DNS].zonemd, [DNS].HTTPS   |
+
+Why it works:
+* No hiding: Like a pelican spotting ripples, ZoneMD and transparency logs expose any change to DNS or data.
+* No "normal" to blend into: Formal proofs define exact expected behavior—deviations are mathematically detectable.
+
+6. Territoriality = Zero Trust Boundaries
+
+| Pelican Trait             | Adversarial Tactic             | Your Countermeasure                                                      | Trustfile Section           |
+|---------------------------|--------------------------------|--------------------------------------------------------------------------|-----------------------------|
+| Aggressively defends nest | Privilege escalation           | Capability tokens (OCAP) + SDP rules (CAdRE).                            | [CAPABILITY_GATEWAY], [SDP_RULES] |
+| Chases off intruders      | Persistent access (e.g., web shells) | Ephemeral capabilities + short-lived tokens.                             | [TRUSTFILE].policies        |
+| Nests in inaccessible areas | Physical tampering (e.g., evil maid) | TPM 2.0 + YubiKey device attestation for admin access.                   | [SDP_RULES].access          |
+
+Why it works:
+* No persistent footholds: Like pelicans chasing off intruders, capabilities expire and SDP segments limit blast radius.
+* No "trusted" internal network: CAdRE Router treats every request as untrusted by default.
+
+## The Adversary’s Perspective
+Your friend in cyberwar thinks in tactical exploits:
+* Find a vulnerability (e.g., SQLi, RCE).
+* Escalate privileges (e.g., sudo, token theft).
+* Move laterally (e.g., Pass-the-Hash).
+* Exfiltrate data (e.g., rclone, DNS tunneling).
+
+Your Trustfile breaks this chain at every step:
+
+| Attack Phase         | Their Tool             | Your Countermeasure                                   | Result                 |
+|----------------------|------------------------|-------------------------------------------------------|------------------------|
+| Reconnaissance       | Nmap, Shodan           | DNS ZoneMD + transparency logs expose scanning.       | Detected immediately.  |
+| Initial Access       | Phishing, zero-days    | Capability-based auth + LEAN4-proven policies.        | No exploit primitives. |
+| Privilege Escalation | Mimikatz, CVE-202X-XXXX | PHP-Aegis + Sanctify block unsafe functions.          | No escalation possible. |
+| Lateral Movement     | Pass-the-Hash, RDP     | SDP (CAdRE Router) + OCAP tokens.                     | No movement allowed.   |
+| Data Exfiltration    | rclone, DNS tunneling  | Consent-Aware HTTP + transparency logs.               | Blocked by default.    |
+| Persistence          | Cron jobs, web shells  | Ephemeral capabilities + immutable logs.              | No persistence possible. |
+
+Why This Metaphor Matters
+Your friend mocks pelicans because he’s trained to think in exploits and payloads. You’re building a system where:
+* Exploits don’t exist (thanks to formal verification).
+* Lateral movement is impossible (thanks to capabilities).
+* Data corruption is detectable (thanks to transparency logs).
+* Crypto agility is baked in (thanks to hybrid PQ + fallbacks).
+Pelicans aren’t the metaphor—they’re the blueprint.
+
+*   Dive from heights = Precision denial (no exploit chains).
+*   Scoop up fish = Resource isolation (no bulk exfiltration).
+*   Flock behavior = Decentralized consensus (no single point of failure).
+*   Saltwater tolerance = Crypto agility (no backdoors).
+*   Keen eyesight = Total observability (no hiding).
+*   Territoriality = Zero Trust (no implicit trust).
+
+How to Explain This to Your Friend
+* Show him the [THREAT_MODEL] section of your Trustfile.
+* Ask him to find an exploit path that survives:
+    * LEAN4-proven policies.
+    * Capability-based auth.
+    * RFC 9162 transparency logs.
+    * Hybrid PQ crypto.
+* Watch him realize he’s fighting a mathematically verified system where the rules of engagement are rigged against him.
+Final Line:
+"You’re hunting for zero-days. I’m building a system where zero-days don’t matter. That’s the difference between cyberwar and cyber peace."
+
+## Trustfile Addendum for Cyberwar Readiness
+
+[ADVERSARY_ANALYSIS]
+-   **APTs (e.g., APT29, Lazarus)**:
+    -   **Weakness**: Rely on exploit chains.
+    -   **Your Advantage**: **Capability-based auth** breaks chains.
+    -   **Detection**: **GitBot-Fleet diffing** + **Hypatia scans**.
+    -   **Mitigation**: **LEAN4 proofs** eliminate entire vulnerability classes.
+-   **Ransomware Groups (e.g., LockBit)**:
+    -   **Weakness**: Need bulk data access.
+    -   **Your Advantage**: **Consent-Aware HTTP** + **SDP** limit access to single resources.
+    -   **Recovery**: **Immutable transparency logs** enable instant rollback.
+-   **Quantum Adversaries (e.g., future NSA)**:
+    -   **Weakness**: Assume AES-256 or RSA will break.
+    -   **Your Advantage**: **Kyber1024 + Dilithium5** + **SPHINCS+ fallback**.
+    -   **Migration Path**: **Automated key rotation** via GitBot-Fleet.
+
+## Key Takeaway
+You’re not building defenses. You’re building a system where offense is impossible.
+Your friend’s world: "How do I exploit this?"
+Your world: "How do I prove this can’t be exploited?"
+That’s not idiocy. That’s asymmetry. 🦢🔒

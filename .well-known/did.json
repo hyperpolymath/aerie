@@ -1,0 +1,57 @@
+{
+  "@context": ["https://www.w3.org/ns/did/v1", "https://w3id.org/security/suites/ed25519-2020/v1"],
+  "id": "did:web:yourdomain.com",
+  "verificationMethod": [
+    {
+      "id": "#primary",
+      "type": "JsonWebKey2020",
+      "controller": "did:web:yourdomain.com",
+      "publicKeyJwk": {
+        "kty": "OKP",
+        "crv": "Ed448",
+        "x": "BASE64URL_ENCODED_Ed448_PUBLIC_KEY"
+      }
+    },
+    {
+      "id": "#dilithium5",
+      "type": "JsonWebKey2020",
+      "controller": "did:web:yourdomain.com",
+      "publicKeyJwk": {
+        "kty": "OKP",
+        "crv": "Dilithium5",
+        "x": "BASE64URL_ENCODED_Dilithium5_PUBLIC_KEY"
+      }
+    },
+    {
+      "id": "#sphincs",
+      "type": "JsonWebKey2020",
+      "controller": "did:web:yourdomain.com",
+      "publicKeyJwk": {
+        "kty": "OKP",
+        "crv": "SPHINCS+",
+        "x": "BASE64URL_ENCODED_SPHINCS_PUBLIC_KEY"
+      }
+    }
+  ],
+  "authentication": ["#primary", "#dilithium5"],
+  "assertionMethod": ["#primary", "#dilithium5", "#sphincs"],
+  "keyAgreement": [
+    {
+      "id": "#kyber1024",
+      "type": "JsonWebKey2020",
+      "controller": "did:web:yourdomain.com",
+      "publicKeyJwk": {
+        "kty": "OKP",
+        "crv": "X1024Kyber",
+        "x": "BASE64URL_ENCODED_Kyber1024_PUBLIC_KEY"
+      }
+    }
+  ],
+  "service": [
+    {
+      "id": "#vcs",
+      "type": "VerifiableCredentialService",
+      "serviceEndpoint": "https://yourdomain.com/vc"
+    }
+  ]
+}

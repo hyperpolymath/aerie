@@ -1,0 +1,9 @@
+version: STSv1
+mode: enforce
+mx: mail.yourdomain.com
+mx: fallback.yourdomain.com
+max_age: 604800
+sha256_fingerprints:
+  - BASE64_SHA256_FINGERPRINT
+shake256_fingerprints:
+  - BASE32_ENCODED_SHAKE256_FINGERPRINT

@@ -1,0 +1,11 @@
+conformance: WCAG 2.3 AAA
+standards: ARIA 1.2, ATAG 2.0
+audit-date: 2026-02-15
+auditor: YourDomain Accessibility Team
+contact: accessibility@yourdomain.com
+technologies:
+  - HTML5
+  - CSS3
+  - Semantic XML
+  - ARIA
+exceptions: none

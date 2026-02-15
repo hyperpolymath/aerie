@@ -16,6 +16,8 @@ Thumbs.db
 /build/
 /dist/
 /out/
+/specs/outputs/
+/generated/
 
 # Dependencies
 /node_modules/
@@ -32,19 +34,16 @@ Thumbs.db
 *.ez
 erl_crash.dump
 
-# Julia
-*.jl.cov
-*.jl.mem
-/Manifest.toml
-
 # ReScript
 /lib/bs/
 /.bsb.lock
 
-# Python (SaltStack only)
-__pycache__/
-*.py[cod]
-.venv/
+# Deno
+*.tsbuildinfo
+
+# V language
+*.v.cache
+*.tmp.c
 
 # Ada/SPARK
 *.ali
@@ -54,9 +53,6 @@ __pycache__/
 # Haskell
 /.stack-work/
 /dist-newstyle/
-
-# Chapel
-*.chpl.tmp.*
 
 # Secrets
 .env

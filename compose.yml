@@ -1,0 +1,83 @@
+# Podman Compose file for Aerie's core services
+#
+# To run: podman-compose up -d
+# To stop: podman-compose down
+#
+# This file defines the three core, non-proprietary services for the Aerie suite.
+# Images are official or from trusted providers as Chainguard images are not available.
+
+version: "3.8"
+
+services:
+  librespeed:
+    image: docker.io/linuxserver/librespeed:latest
+    container_name: aerie-librespeed
+    ports:
+      - "8080:80" # The PHP version of librespeed uses port 80
+    networks:
+      - aerie-net
+    restart: unless-stopped
+    security_opt:
+      - label=disable
+
+  smokeping:
+    image: docker.io/linuxserver/smokeping:latest
+    container_name: aerie-smokeping
+    ports:
+      - "8081:80" # Map to a different host port to avoid conflict
+    volumes:
+      - smokeping-config:/config
+      - smokeping-data:/data
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    networks:
+      - aerie-net
+    restart: unless-stopped
+    security_opt:
+      - label=disable
+    cap_add:
+      - NET_RAW
+
+  redis:
+    image: docker.io/redis:alpine
+    container_name: aerie-redis
+    volumes:
+      - redis-data:/data
+    networks:
+      - aerie-net
+    restart: unless-stopped
+    security_opt:
+      - label=disable
+
+  hyperglass:
+    build:
+      context: ./src/hyperglass
+    container_name: aerie-hyperglass
+    ports:
+      - "8082:80" # Map to a different host port to avoid conflict
+    volumes:
+      - hyperglass-config:/app/config
+    environment:
+      - HYPERGLASS_HOST=0.0.0.0
+      - HYPERGLASS_PORT=80
+    networks:
+      - aerie-net
+    restart: unless-stopped
+    security_opt:
+      - label=disable
+
+networks:
+  aerie-net:
+    name: aerie-net
+
+volumes:
+  smokeping-config:
+    name: aerie-smokeping-config
+  smokeping-data:
+    name: aerie-smokeping-data
+  hyperglass-config:
+    name: aerie-hyperglass-config
+  redis-data:
+    name: aerie-redis-data

@@ -1,0 +1,18 @@
+Contact: mailto:security@yourdomain.com
+Contact: https://yourdomain.com/security-contact
+Encryption: https://yourdomain.com/pgp-key.asc
+Acknowledgments: https://yourdomain.com/hall-of-fame
+Policy: https://yourdomain.com/security-policy
+Hiring: https://yourdomain.com/careers
+Signed: https://yourdomain.com/security.txt.sig
+
+# Post-Quantum Algorithms
+Primary-Signatures: Ed448 + Dilithium5 (hybrid)
+Fallback-Signatures: SPHINCS+
+Key-Exchange: Kyber1024-X25519
+Hashing: SHAKE3-512, BLAKE3
+Canonicalization: https://yourdomain.com/.well-known/rfc8785
+
+# Accessibility
+Compliance: WCAG 2.3 AAA, ARIA 1.2
+Auditor: https://yourdomain.com/accessibility-statement

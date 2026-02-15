@@ -1,0 +1,25 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "YourDomain AI Plugin",
+  "name_for_model": "yourdomain",
+  "description_for_human": "Interact with YourDomain's formally verified APIs.",
+  "description_for_model": "Plugin for accessing YourDomain's services with Coq-verified logic.",
+  "auth": {
+    "type": "oauth",
+    "client_url": "https://yourdomain.com/oauth-client",
+    "scope": "read write",
+    "authorization_url": "https://yourdomain.com/oauth/authorize",
+    "authorization_content_type": "application/json",
+    "verification_tokens": {
+      "openai": "BASE32_ENCODED_SHAKE256_TOKEN"
+    }
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://yourdomain.com/openapi.yaml",
+    "has_user_authentication": true
+  },
+  "logo_url": "https://yourdomain.com/logo.png",
+  "contact_email": "ai@yourdomain.com",
+  "legal_info_url": "https://yourdomain.com/legal/ai"
+}
