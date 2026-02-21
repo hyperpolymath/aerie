@@ -17,6 +17,8 @@ A high-assurance alternative to commercial speedtests. CF-NDS is designed to pro
 
 == Architecture (Secure Stack)
 
+See link:TOPOLOGY.md[TOPOLOGY.md] for a visual architecture map and completion dashboard.
+
 * **Verification chain**: Cerro Torre (bundle verification) → Svalinn (policy gate) → Vörðr (orchestration) → selur (IPC).
 * **Data plane**: VerisimDB federation + VQL, ArangoDB for path/graph forensics, Dragonfly for realtime cache.
 * **API plane**: GraphQL gateway with module-based entitlements and proof envelopes on every response.
