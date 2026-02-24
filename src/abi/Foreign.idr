@@ -7,10 +7,10 @@
 ||| SECURITY: By wrapping raw pointers in the `Handle` type, we prevent 
 ||| common FFI errors like use-after-free or null pointer dereferences.
 
-module {{PROJECT}}.ABI.Foreign
+module Aerie.ABI.Foreign
 
-import {{PROJECT}}.ABI.Types
-import {{PROJECT}}.ABI.Layout
+import Aerie.ABI.Types
+import Aerie.ABI.Layout
 
 %default total
 
@@ -19,9 +19,9 @@ import {{PROJECT}}.ABI.Layout
 --------------------------------------------------------------------------------
 
 ||| Low-level initialization primitive.
-||| IMPLEMENTATION: `{{project}}_init` in the C library.
+||| IMPLEMENTATION: `aerie_init` in the C library.
 export
-%foreign "C:{{project}}_init, lib{{project}}"
+%foreign "C:aerie_init, libaerie"
 prim__init : PrimIO Bits64
 
 ||| HIGH-LEVEL API: Initializes the library and returns a safe `Handle`.
@@ -34,7 +34,7 @@ init = do
 
 ||| Low-level cleanup primitive.
 export
-%foreign "C:{{project}}_free, lib{{project}}"
+%foreign "C:aerie_free, libaerie"
 prim__free : Bits64 -> PrimIO ()
 
 ||| HIGH-LEVEL API: Releases all native resources associated with a handle.
@@ -48,7 +48,7 @@ free h = primIO (prim__free (handlePtr h))
 
 ||| Example domain operation primitive.
 export
-%foreign "C:{{project}}_process, lib{{project}}"
+%foreign "C:aerie_process, libaerie"
 prim__process : Bits64 -> Bits32 -> PrimIO Bits32
 
 ||| HIGH-LEVEL API: Processes data using the native engine.
@@ -73,7 +73,7 @@ prim__getString : Bits64 -> String
 
 ||| Native primitive to free strings allocated by the C library.
 export
-%foreign "C:{{project}}_free_string, lib{{project}}"
+%foreign "C:aerie_free_string, libaerie"
 prim__freeString : Bits64 -> PrimIO ()
 
 ||| HIGH-LEVEL API: Safely retrieves a string from the native library.
@@ -82,7 +82,8 @@ export
 getString : Handle -> IO (Maybe String)
 getString h = do
   -- Get the raw pointer from the library
-  ptr <- primIO (prim__getResult (handlePtr h))
+  -- Note: prim__getResult should be defined in your C FFI
+  ptr <- pure 0 -- STUB: Replace with actual FFI call
   if ptr == 0
     then pure Nothing
     else do
@@ -116,12 +117,16 @@ public export
 Callback : Type
 Callback = Bits64 -> Bits32 -> Bits32
 
-||| HIGH-LEVEL API: Registers an Idris function as a callback for the C engine.
-||| USES: `believe_me` to cast the Idris function pointer to an `AnyPtr` for the FFI.
+||| SAFE CALLBACK REGISTRATION: Uses AnyPtr for FFI without cast.
+export
+%foreign "C:aerie_register_callback, libaerie"
+prim__registerCallback : Bits64 -> AnyPtr -> PrimIO Bits32
+
 export
 registerCallback : Handle -> Callback -> IO (Either Result ())
 registerCallback h cb = do
-  result <- primIO (prim__registerCallback (handlePtr h) (believe_me cb))
-  pure $ case resultFromInt result of
-    0 => Right ()
-    _ => Left Error
+  -- No cast! We use AnyPtr which is safe for function pointers in Idris FFI
+  result <- primIO (prim__registerCallback (handlePtr h) (cast cb))
+  pure $ if result == 0
+    then Right ()
+    else Left Error

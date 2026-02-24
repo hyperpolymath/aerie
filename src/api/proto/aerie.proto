@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package aerie.api.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// --- Proof Envelopes ---
+
+message ProofEnvelope {
+  string result_hash = 1;
+  string policy_hash = 2;
+  string query_id = 3;
+  google.protobuf.Timestamp issued_at = 4;
+  string proof_type = 5; // "light" | "full"
+  string signature = 6;
+  google.protobuf.Value a2ml_attestation = 7;
+  google.protobuf.Value vql_proof = 8;
+}
+
+// --- Data Types ---
+
+message TelemetrySample {
+  google.protobuf.Timestamp timestamp = 1;
+  double latency_ms = 2;
+  double jitter_ms = 3;
+  double packet_loss = 4;
+}
+
+message RouteHop {
+  int32 hop = 1;
+  string ip = 2;
+  string asn = 3;
+  double rtt_ms = 4;
+}
+
+message AuditEvent {
+  string event_id = 1;
+  google.protobuf.Timestamp valid_time = 2;
+  google.protobuf.Timestamp tx_time = 3;
+  string severity = 4;
+  string message = 5;
+  repeated string tags = 6;
+}
+
+// --- Payloads ---
+
+message TelemetryPayload {
+  repeated TelemetrySample data = 1;
+  ProofEnvelope proof = 2;
+}
+
+message RouteForensicsPayload {
+  repeated RouteHop path = 1;
+  ProofEnvelope proof = 2;
+}
+
+message AuditPayload {
+  repeated AuditEvent events = 1;
+  ProofEnvelope proof = 2;
+}
+
+// --- Service Definitions ---
+
+service AerieService {
+  rpc GetTelemetrySnapshot(TelemetryRequest) returns (TelemetryPayload);
+  rpc GetRouteForensicsSnapshot(RouteForensicsRequest) returns (RouteForensicsPayload);
+  rpc GetAuditSnapshot(AuditRequest) returns (AuditPayload);
+
+  rpc StreamTelemetry(TelemetryRequest) returns (stream TelemetryPayload);
+  rpc StreamRouteForensics(RouteForensicsRequest) returns (stream RouteForensicsPayload);
+  rpc StreamAudit(AuditRequest) returns (stream AuditPayload);
+}
+
+message TelemetryRequest {}
+
+message RouteForensicsRequest {
+  string target = 1;
+}
+
+message AuditRequest {
+  int32 limit = 1;
+}

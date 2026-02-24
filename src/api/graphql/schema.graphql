@@ -1,0 +1,40 @@
+type Query {
+  telemetrySnapshot: TelemetryPayload!
+  routeForensicsSnapshot(target: String!): RouteForensicsPayload!
+  auditSnapshot(limit: Int = 50): AuditPayload!
+}
+
+type TelemetryPayload {
+  data: [TelemetrySample!]!
+}
+
+type TelemetrySample {
+  timestamp: String!
+  latencyMs: Float!
+  jitterMs: Float!
+  packetLoss: Float!
+}
+
+type RouteForensicsPayload {
+  path: [RouteHop!]!
+}
+
+type RouteHop {
+  hop: Int!
+  ip: String!
+  asn: String
+  rttMs: Float
+}
+
+type AuditPayload {
+  events: [AuditEvent!]!
+}
+
+type AuditEvent {
+  eventId: ID!
+  validTime: String!
+  txTime: String!
+  severity: String!
+  message: String!
+  tags: [String!]!
+}
