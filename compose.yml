@@ -21,8 +21,8 @@ services:
       - PORT=4000
       - GRPC_PORT=4001
       - REDIS_URL=redis://redis:6379
-      - LIBRESPEED_URL=http://librespeed:8080
-      - HYPERGLASS_URL=http://hyperglass:8082
+      - LIBRESPEED_URL=http://librespeed:80
+      - HYPERGLASS_URL=http://hyperglass:80
     depends_on:
       - librespeed
       - smokeping
@@ -37,8 +37,7 @@ services:
   librespeed:
     image: docker.io/linuxserver/librespeed:latest
     container_name: aerie-librespeed
-    ports:
-      - "8080:80" # The PHP version of librespeed uses port 80
+    # No host port — only reachable via aerie-net (gateway proxies all access)
     networks:
       - aerie-net
     restart: unless-stopped
@@ -48,8 +47,7 @@ services:
   smokeping:
     image: docker.io/linuxserver/smokeping:latest
     container_name: aerie-smokeping
-    ports:
-      - "8081:80" # Map to a different host port to avoid conflict
+    # No host port — only reachable via aerie-net (gateway proxies all access)
     volumes:
       - smokeping-config:/config
       - smokeping-data:/data
@@ -80,8 +78,7 @@ services:
     build:
       context: ./src/hyperglass
     container_name: aerie-hyperglass
-    ports:
-      - "8082:80" # Map to a different host port to avoid conflict
+    # No host port — only reachable via aerie-net (gateway proxies all access)
     volumes:
       - hyperglass-config:/app/config
     environment:
