@@ -60,16 +60,72 @@ message AuditPayload {
   ProofEnvelope proof = 2;
 }
 
+// --- SmokePing Types (Phase 2) ---
+
+message SmokePingSample {
+  google.protobuf.Timestamp timestamp = 1;
+  string target = 2;
+  double median_ms = 3;
+  double loss_pct = 4;
+  double min_ms = 5;
+  double max_ms = 6;
+  double stddev_ms = 7;
+}
+
+message SmokeChartPoint {
+  google.protobuf.Timestamp timestamp = 1;
+  double median_ms = 2;
+  double loss_pct = 3;
+}
+
+message SmokePingPayload {
+  string target = 1;
+  SmokePingSample current = 2;
+  repeated SmokeChartPoint chart = 3;
+  ProofEnvelope proof = 4;
+}
+
+message SmokePingRequest {
+  string target = 1;
+}
+
+// --- VerisimDB Bitemporal Types (Phase 2) ---
+
+// TemporalAuditRequest enables bitemporal forensics queries against
+// the VerisimDB cold store. Three query modes are supported:
+//   - "as_of":   point-in-time snapshot (what did we know at time T?)
+//   - "between": range query (what happened between T1 and T2?)
+//   - "history": full lineage of a specific event by ID
+message TemporalAuditRequest {
+  string mode = 1;      // "as_of" | "between" | "history"
+  string time = 2;      // for as_of mode: RFC 3339 timestamp
+  string start = 3;     // for between mode: RFC 3339 range start
+  string end = 4;       // for between mode: RFC 3339 range end
+  string event_id = 5;  // for history mode: UUID of event to trace
+  int32 limit = 6;      // max events to return (default 50)
+}
+
+// TemporalAuditPayload wraps the bitemporal query results with
+// the query mode and a proof envelope for tamper detection.
+message TemporalAuditPayload {
+  string mode = 1;
+  repeated AuditEvent events = 2;
+  ProofEnvelope proof = 3;
+}
+
 // --- Service Definitions ---
 
 service AerieService {
   rpc GetTelemetrySnapshot(TelemetryRequest) returns (TelemetryPayload);
   rpc GetRouteForensicsSnapshot(RouteForensicsRequest) returns (RouteForensicsPayload);
   rpc GetAuditSnapshot(AuditRequest) returns (AuditPayload);
+  rpc GetSmokePingSnapshot(SmokePingRequest) returns (SmokePingPayload);
+  rpc GetTemporalAuditSnapshot(TemporalAuditRequest) returns (TemporalAuditPayload);
 
   rpc StreamTelemetry(TelemetryRequest) returns (stream TelemetryPayload);
   rpc StreamRouteForensics(RouteForensicsRequest) returns (stream RouteForensicsPayload);
   rpc StreamAudit(AuditRequest) returns (stream AuditPayload);
+  rpc StreamSmokePing(SmokePingRequest) returns (stream SmokePingPayload);
 }
 
 message TelemetryRequest {}

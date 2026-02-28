@@ -5,7 +5,7 @@
 // Serves up to three API protocols from a single gateway process:
 //
 //   1. GraphQL  — POST /graphql                        (port 4000)
-//   2. REST     — GET  /api/v1/{telemetry,routes,audit} (port 4000)
+//   2. REST     — GET  /api/v1/{telemetry,routes,audit,audit/temporal,smokeping} (port 4000)
 //   3. gRPC     — binary protobuf                       (port 4001)
 //
 // Each protocol can be independently enabled or disabled via environment
@@ -27,6 +27,7 @@
 //   - LibreSpeed  at LIBRESPEED_URL  (default http://librespeed:80)
 //   - Hyperglass  at HYPERGLASS_URL  (default http://hyperglass:80)
 //   - Redis       at REDIS_URL       (default redis://redis:6379)
+//   - VerisimDB   at VERISIMDB_URL   (default http://verisimdb:8084)
 
 module main
 
@@ -133,6 +134,9 @@ fn main() {
 	// Initialise Redis client (lazy connection)
 	mut redis := new_redis_client()
 
+	// Initialise VerisimDB client (HTTP REST, fire-and-forget)
+	verisimdb := new_verisimdb_client()
+
 	// Determine whether we need the HTTP server at all
 	http_needed := cfg.rest_enabled || cfg.graphql_enabled
 
@@ -151,9 +155,10 @@ fn main() {
 		mut server := http.Server{
 			port: http_port
 			handler: AerieHandler{
-				redis:  &redis
-				config: cfg
-				verbs:  verbs
+				redis:     &redis
+				config:    cfg
+				verbs:     verbs
+				verisimdb: verisimdb
 			}
 		}
 		server.listen_and_serve()
@@ -178,9 +183,10 @@ fn main() {
 // (or stealth-404'd) before reaching the resolver layer.
 struct AerieHandler {
 mut:
-	redis    &RedisClient
-	config   ProtocolConfig
-	verbs    VerbGovernor
+	redis     &RedisClient
+	config    ProtocolConfig
+	verbs     VerbGovernor
+	verisimdb VerisimDBClient
 }
 
 // handle processes an incoming HTTP request through the policy gate,
@@ -195,7 +201,9 @@ fn (mut h AerieHandler) handle(req http.Request) http.Response {
 		req.url.starts_with('/graphql') { 'graphql' }
 		req.url.starts_with('/api/v1/telemetry') { 'telemetry' }
 		req.url.starts_with('/api/v1/routes') { 'routes' }
+		req.url.starts_with('/api/v1/audit/temporal') { 'temporal_audit' }
 		req.url.starts_with('/api/v1/audit') { 'audit' }
+		req.url.starts_with('/api/v1/smokeping') { 'smokeping' }
 		req.url.starts_with('/api/v1/health') { 'health' }
 		else { 'unknown' }
 	}
@@ -299,8 +307,14 @@ fn (mut h AerieHandler) handle(req http.Request) http.Response {
 		req.url.starts_with('/api/v1/routes') {
 			handle_routes_request(req, mut h.redis, policy)
 		}
+		req.url.starts_with('/api/v1/audit/temporal') {
+			handle_temporal_audit_request(req, mut h.redis, h.verisimdb, policy)
+		}
 		req.url.starts_with('/api/v1/audit') {
 			handle_audit_request(req, mut h.redis, policy)
+		}
+		req.url.starts_with('/api/v1/smokeping') {
+			handle_smokeping_request(req, mut h.redis, policy)
 		}
 		req.url.starts_with('/api/v1/health') {
 			health_check(h.config)
@@ -369,6 +383,48 @@ fn handle_audit_request(req http.Request, mut redis RedisClient, policy PolicyDe
 	return resolve_audit(limit, mut redis, policy)
 }
 
+// handle_smokeping_request extracts the target query parameter and
+// dispatches to the SmokePing resolver for latency/jitter data.
+fn handle_smokeping_request(req http.Request, mut redis RedisClient, policy PolicyDecision) string {
+	target := extract_query_param(req.url, 'target')
+	if target.len == 0 {
+		return '{"error":"Missing required query parameter: target","usage":"/api/v1/smokeping?target=<hostname_or_ip>"}'
+	}
+	return resolve_smokeping(target, mut redis, policy)
+}
+
+// handle_temporal_audit_request extracts temporal query parameters and
+// dispatches to the VerisimDB bitemporal audit resolver.
+//
+// Query parameters:
+//   mode:     required — "as_of", "between", or "history"
+//   time:     for as_of mode — RFC 3339 timestamp
+//   start:    for between mode — RFC 3339 range start
+//   end:      for between mode — RFC 3339 range end
+//   event_id: for history mode — UUID of the event to trace
+//   limit:    maximum events to return (default 50)
+//
+// Examples:
+//   /api/v1/audit/temporal?mode=as_of&time=2026-02-28T12:00:00Z
+//   /api/v1/audit/temporal?mode=between&start=2026-02-01T00:00:00Z&end=2026-02-28T23:59:59Z
+//   /api/v1/audit/temporal?mode=history&event_id=550e8400-e29b-41d4-a716-446655440000
+fn handle_temporal_audit_request(req http.Request, mut redis RedisClient, verisimdb VerisimDBClient, policy PolicyDecision) string {
+	mode := extract_query_param(req.url, 'mode')
+	if mode.len == 0 {
+		return '{"error":"Missing required query parameter: mode","usage":"/api/v1/audit/temporal?mode=as_of&time=2026-02-28T12:00:00Z","available_modes":["as_of","between","history"]}'
+	}
+	mut params := map[string]string{}
+	params['time'] = extract_query_param(req.url, 'time')
+	params['start'] = extract_query_param(req.url, 'start')
+	params['end'] = extract_query_param(req.url, 'end')
+	params['event_id'] = extract_query_param(req.url, 'event_id')
+	limit_str := extract_query_param(req.url, 'limit')
+	if limit_str.len > 0 {
+		params['limit'] = limit_str
+	}
+	return resolve_temporal_audit(mode, params, mut redis, verisimdb, policy)
+}
+
 // extract_query_param extracts a named parameter from a URL query string.
 // Returns empty string if the parameter is not found.
 fn extract_query_param(url string, name string) string {
@@ -413,7 +469,7 @@ fn health_check(cfg ProtocolConfig) string {
 		bound_ports++
 	}
 
-	return '{"status":"healthy","service":"aerie-gateway","version":"0.2.0","timestamp":"${now}","protocols":{"rest":${cfg.rest_enabled},"graphql":${cfg.graphql_enabled},"grpc":${cfg.grpc_enabled}},"active_protocols":${active},"bound_ports":${bound_ports},"verb_governance":true,"stealth_mode":true,"proof_mode":"light","policy_phase":1}'
+	return '{"status":"healthy","service":"aerie-gateway","version":"0.3.0","timestamp":"${now}","protocols":{"rest":${cfg.rest_enabled},"graphql":${cfg.graphql_enabled},"grpc":${cfg.grpc_enabled}},"active_protocols":${active},"bound_ports":${bound_ports},"verb_governance":true,"stealth_mode":true,"proof_mode":"light","policy_phase":1}'
 }
 
 // not_found_response lists only the endpoints that are currently enabled,
@@ -427,6 +483,8 @@ fn not_found_response(cfg ProtocolConfig) string {
 		endpoints << '"/api/v1/telemetry"'
 		endpoints << '"/api/v1/routes"'
 		endpoints << '"/api/v1/audit"'
+		endpoints << '"/api/v1/audit/temporal"'
+		endpoints << '"/api/v1/smokeping"'
 	}
 	endpoints << '"/api/v1/health"'
 	return '{"error":"Not found","available_endpoints":[${endpoints.join(",")}]}'
@@ -528,8 +586,32 @@ fn handle_grpc_connection(mut conn net.TcpConn, mut redis RedisClient) {
 			limit := (obj['limit'] or { json2.Any(50) }).int()
 			resolve_audit(limit, mut redis, policy)
 		}
+		'GetSmokePingSnapshot' {
+			target := (obj['target'] or { json2.Any('') }).str()
+			if target.len == 0 {
+				'{"error":"target field required"}'
+			} else {
+				resolve_smokeping(target, mut redis, policy)
+			}
+		}
+		'GetTemporalAuditSnapshot' {
+			mode := (obj['mode'] or { json2.Any('') }).str()
+			if mode.len == 0 {
+				'{"error":"mode field required (as_of, between, history)"}'
+			} else {
+				mut params := map[string]string{}
+				params['time'] = (obj['time'] or { json2.Any('') }).str()
+				params['start'] = (obj['start'] or { json2.Any('') }).str()
+				params['end'] = (obj['end'] or { json2.Any('') }).str()
+				params['event_id'] = (obj['event_id'] or { json2.Any('') }).str()
+				limit := (obj['limit'] or { json2.Any(50) }).int()
+				params['limit'] = '${limit}'
+				verisimdb := new_verisimdb_client()
+				resolve_temporal_audit(mode, params, mut redis, verisimdb, policy)
+			}
+		}
 		else {
-			'{"error":"Unknown method: ${method}","available":["GetTelemetrySnapshot","GetRouteForensicsSnapshot","GetAuditSnapshot"]}'
+			'{"error":"Unknown method: ${method}","available":["GetTelemetrySnapshot","GetRouteForensicsSnapshot","GetAuditSnapshot","GetSmokePingSnapshot","GetTemporalAuditSnapshot"]}'
 		}
 	}
 

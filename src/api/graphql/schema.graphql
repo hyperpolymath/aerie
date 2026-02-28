@@ -2,6 +2,8 @@ type Query {
   telemetrySnapshot: TelemetryPayload!
   routeForensicsSnapshot(target: String!): RouteForensicsPayload!
   auditSnapshot(limit: Int = 50): AuditPayload!
+  smokePingSnapshot(target: String!): SmokePingPayload!
+  temporalAuditSnapshot(mode: String!, time: String, start: String, end: String, eventId: String, limit: Int = 50): TemporalAuditPayload!
 }
 
 type TelemetryPayload {
@@ -37,4 +39,31 @@ type AuditEvent {
   severity: String!
   message: String!
   tags: [String!]!
+}
+
+type SmokePingPayload {
+  target: String!
+  current: SmokePingSample!
+  chart: [SmokeChartPoint!]!
+}
+
+type SmokePingSample {
+  timestamp: String!
+  target: String!
+  medianMs: Float!
+  lossPct: Float!
+  minMs: Float!
+  maxMs: Float!
+  stddevMs: Float!
+}
+
+type SmokeChartPoint {
+  timestamp: String!
+  medianMs: Float!
+  lossPct: Float!
+}
+
+type TemporalAuditPayload {
+  mode: String!
+  events: [AuditEvent!]!
 }

@@ -4,8 +4,8 @@
 //
 // Implements the AerieGraphQLService interface (from schema.gql.v) and
 // the AerieService interface (from aerie.pb.v). Both interfaces resolve
-// to the same underlying service clients (LibreSpeed, Hyperglass, Redis)
-// and wrap all responses in proof envelopes.
+// to the same underlying service clients (LibreSpeed, Hyperglass, Redis,
+// SmokePing, VerisimDB) and wrap all responses in proof envelopes.
 //
 // The triple-mount architecture means the same business logic serves:
 //   - GraphQL queries via POST /graphql
@@ -16,6 +16,7 @@
 
 module main
 
+import time
 import x.json2
 
 // resolve_telemetry fetches telemetry data from LibreSpeed,
@@ -109,9 +110,99 @@ pub fn resolve_audit(limit int, mut redis RedisClient, policy PolicyDecision) st
 	return result
 }
 
+// resolve_temporal_audit queries VerisimDB for bitemporal audit data.
+// Supports three query modes:
+//   - as_of:   "What was the audit state at time T?"
+//   - between: "What events occurred between T1 and T2?"
+//   - history: "Full history of event X"
+//
+// Used by:
+//   - GraphQL: temporalAuditSnapshot(mode, ...) query
+//   - gRPC:    GetTemporalAuditSnapshot RPC
+//   - REST:    GET /api/v1/audit/temporal?mode=as_of&time=...
+//
+// The resolver wraps VerisimDB responses in a proof envelope and
+// logs access to both Redis (hot) and VerisimDB (cold) via dual_log_audit.
+pub fn resolve_temporal_audit(mode string, params map[string]string, mut redis RedisClient, verisimdb VerisimDBClient, policy PolicyDecision) string {
+	events := match mode {
+		'as_of' {
+			as_of_time := params['time'] or { time.now().format_rfc3339() }
+			limit := (params['limit'] or { '50' }).int()
+			verisimdb.query_as_of(as_of_time, limit)
+		}
+		'between' {
+			start := params['start'] or { '' }
+			end := params['end'] or { '' }
+			limit := (params['limit'] or { '50' }).int()
+			if start.len == 0 || end.len == 0 {
+				return '{"error":"between mode requires start and end parameters"}'
+			}
+			verisimdb.query_between(start, end, limit)
+		}
+		'history' {
+			event_id := params['event_id'] or { '' }
+			if event_id.len == 0 {
+				return '{"error":"history mode requires event_id parameter"}'
+			}
+			verisimdb.query_history(event_id)
+		}
+		else {
+			return '{"error":"Unknown temporal mode: ${mode}","available":["as_of","between","history"]}'
+		}
+	}
+
+	// Build the response JSON with mode and events array
+	events_json := '[${events.join(",")}]'
+	data_json := '{"mode":"${mode}","events":${events_json}}'
+
+	// Wrap in proof envelope
+	policy_ctx := policy_context_string('temporal_audit')
+	result := wrap_body_with_proof(data_json, policy_ctx)
+
+	// Log access to both tiers
+	audit := decision_to_audit_event(policy, policy.module_name)
+	dual_log_audit(mut redis, verisimdb, audit)
+
+	return result
+}
+
+// resolve_smokeping fetches latency/jitter data from SmokePing,
+// wraps it in a proof envelope, and returns JSON.
+//
+// Used by:
+//   - GraphQL: smokePingSnapshot(target) query
+//   - gRPC: GetSmokePingSnapshot RPC
+//   - REST: GET /api/v1/smokeping?target=<host>
+pub fn resolve_smokeping(target string, mut redis RedisClient, policy PolicyDecision) string {
+	// Check cache first (TTL: 120 seconds for smokeping — data changes slowly)
+	cache_key := 'smokeping:${target}'
+	cached := redis.get_cached(cache_key)
+	if cached.len > 0 {
+		return cached
+	}
+
+	// Query SmokePing probe
+	payload := get_smokeping_data(target)
+	data_json := smokeping_payload_to_json(payload)
+
+	// Wrap in proof envelope
+	policy_ctx := policy_context_string('smokeping')
+	result := wrap_body_with_proof(data_json, policy_ctx)
+
+	// Cache for 120 seconds (smoke chart data updates every ~5 minutes)
+	redis.cache_result(cache_key, result, 120)
+
+	// Log audit event
+	audit := decision_to_audit_event(policy, policy.module_name)
+	redis.log_audit(audit)
+
+	return result
+}
+
 // resolve_graphql_query parses a GraphQL query string and dispatches
-// to the appropriate resolver. Supports the three root queries defined
-// in schema.graphql: telemetrySnapshot, routeForensicsSnapshot, auditSnapshot.
+// to the appropriate resolver. Supports the root queries defined in
+// schema.graphql: telemetrySnapshot, routeForensicsSnapshot,
+// auditSnapshot, smokePingSnapshot.
 //
 // This is a simplified GraphQL executor sufficient for Phase 1.
 // Phase 2+ may integrate a full GraphQL parser from the v-ecosystem.
@@ -128,14 +219,40 @@ pub fn resolve_graphql_query(query string, mut redis RedisClient, policy PolicyD
 		}
 		return resolve_route_forensics(target, mut redis, policy)
 	}
+	// temporalAuditSnapshot must be checked BEFORE auditSnapshot to avoid
+	// false match (auditSnapshot is a substring of temporalAuditSnapshot)
+	if query.contains('temporalAuditSnapshot') {
+		mode := extract_string_arg(query, 'mode')
+		if mode.len == 0 {
+			return '{"errors":[{"message":"temporalAuditSnapshot requires mode argument (as_of, between, history)"}]}'
+		}
+		mut params := map[string]string{}
+		params['time'] = extract_string_arg(query, 'time')
+		params['start'] = extract_string_arg(query, 'start')
+		params['end'] = extract_string_arg(query, 'end')
+		params['event_id'] = extract_string_arg(query, 'eventId')
+		limit_val := extract_int_arg(query, 'limit')
+		if limit_val > 0 {
+			params['limit'] = '${limit_val}'
+		}
+		verisimdb := new_verisimdb_client()
+		return resolve_temporal_audit(mode, params, mut redis, verisimdb, policy)
+	}
 	if query.contains('auditSnapshot') {
 		// Extract limit argument (default 50)
 		limit_str := extract_int_arg(query, 'limit')
 		limit := if limit_str > 0 { limit_str } else { 50 }
 		return resolve_audit(limit, mut redis, policy)
 	}
+	if query.contains('smokePingSnapshot') {
+		target := extract_string_arg(query, 'target')
+		if target.len == 0 {
+			return '{"errors":[{"message":"smokePingSnapshot requires a target argument"}]}'
+		}
+		return resolve_smokeping(target, mut redis, policy)
+	}
 
-	return '{"errors":[{"message":"Unknown query. Available: telemetrySnapshot, routeForensicsSnapshot(target), auditSnapshot(limit)"}]}'
+	return '{"errors":[{"message":"Unknown query. Available: telemetrySnapshot, routeForensicsSnapshot(target), auditSnapshot(limit), temporalAuditSnapshot(mode, time, start, end, eventId, limit), smokePingSnapshot(target)"}]}'
 }
 
 // extract_string_arg extracts a string argument value from a GraphQL query.

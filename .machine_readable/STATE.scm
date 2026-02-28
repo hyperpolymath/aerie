@@ -3,7 +3,7 @@
 
 (state
   (metadata
-    (version "0.2.0")
+    (version "0.3.0")
     (schema-version "1.0")
     (created "2026-02-01")
     (updated "2026-02-28")
@@ -18,8 +18,8 @@
                  "protobuf" "a2ml")))
 
   (current-position
-    (phase "core-telemetry")
-    (overall-completion 40)
+    (phase "historical-integrity")
+    (overall-completion 55)
     (working-features
       ("K9 specs system"
        "Proof envelope spec"
@@ -30,16 +30,35 @@
        "Triple-mount API gateway (GraphQL + gRPC + REST)"
        "LibreSpeed HTTP client"
        "Hyperglass HTTP client"
+       "SmokePing HTTP client (smoke charts + latency/jitter)"
+       "VerisimDB bitemporal client (as-of, between, history queries)"
+       "Dual-tier audit pipeline (Redis hot + VerisimDB cold)"
+       "Temporal audit REST/GraphQL/gRPC endpoints"
        "Redis client (cache + audit log)"
        "SHA-256 proof envelopes on all responses"
-       "Podman Compose with 5 services"
+       "Podman Compose with 6 services (+ VerisimDB)"
        "Containerfile for gateway (Chainguard images)"
        "ABI type definitions (Idris2)"
        "FFI implementation (Zig)")))
 
   (session-history
     (session
-      (date "2026-02-28")
+      (date "2026-02-28c")
+      (summary "Phase 2: SmokePing integration + VerisimDB bitemporal audit")
+      (changes
+        ("Created smokeping_client.v — HTTP client for SmokePing CGI endpoint, smoke chart data, RRD parsing"
+         "Created verisimdb_client.v — VerisimDB bitemporal client with as-of/between/history queries"
+         "Added dual_log_audit() — writes to both Redis (hot) and VerisimDB (cold)"
+         "Added resolve_smokeping() and resolve_temporal_audit() resolvers with proof envelopes"
+         "Added REST endpoints: /api/v1/smokeping, /api/v1/audit/temporal"
+         "Added GraphQL queries: smokePingSnapshot(target), temporalAuditSnapshot(mode, ...)"
+         "Added gRPC methods: GetSmokePingSnapshot, GetTemporalAuditSnapshot"
+         "Updated schema.graphql with SmokePingPayload, SmokePingSample, SmokeChartPoint, TemporalAuditPayload"
+         "Updated aerie.proto with SmokePing and TemporalAudit message types and RPCs"
+         "Added VerisimDB as 6th service in compose.yml (port 8084, persistent volume)"
+         "Gateway version bumped to 0.3.0, 2384 LOC across 10 V files")))
+    (session
+      (date "2026-02-28b")
       (summary "Block 1 immediate fixes audit and submodule investigation")
       (changes
         ("Verified .gitignore already has PMPL-1.0-or-later (not AGPL)"
