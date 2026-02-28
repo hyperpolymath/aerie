@@ -59,9 +59,11 @@ cd ffi/zig && zig build test-integration
 | Hyperglass | 8082 | 80 |
 | Redis | 6379 | 6379 |
 
-## Embedded Repositories
+## Embedded Repositories (Git Submodules)
 
-- `bgp-backbone-lab/` — Independent BGP testing infrastructure (own .git)
-- `src/hyperglass/` — Hyperglass deployment (own .git, builds as container)
+- `bgp-backbone-lab/` — Independent BGP testing infrastructure (submodule: github.com/hyperpolymath/bgp-backbone-lab)
+- `qubes-sdp/` — Qubes Software Development Platform (submodule: github.com/hyperpolymath/qubes-sdp)
+- `src/hyperglass/` — Hyperglass looking glass deployment (submodule: github.com/thatmattlove/hyperglass)
 
-These are NOT submodules — they are embedded independent repos.
+These are tracked as git submodules via `.gitmodules`. Each has its own
+`.git` directory and independent commit history.

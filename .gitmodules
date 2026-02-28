@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+#
+# Submodule declarations for embedded independent repos.
+# These directories have their own .git directories and are tracked as
+# gitlinks (mode 160000) so the parent repo can pin specific commits.
+
+[submodule "bgp-backbone-lab"]
+	path = bgp-backbone-lab
+	url = git@github.com:hyperpolymath/bgp-backbone-lab.git
+	branch = main
+
+[submodule "qubes-sdp"]
+	path = qubes-sdp
+	url = git@github.com:hyperpolymath/qubes-sdp.git
+	branch = main
+
+[submodule "src/hyperglass"]
+	path = src/hyperglass
+	url = https://github.com/thatmattlove/hyperglass.git
+	branch = main
