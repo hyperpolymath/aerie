@@ -198,15 +198,24 @@ fn (mut h AerieHandler) handle(req http.Request) http.Response {
 	// Evaluate policy
 	policy := evaluate_policy(api_key, module_name)
 
-	// CORS headers for browser-based clients
+	// Response headers: CORS, security, and connection management.
+	// Force Connection: close to prevent clients holding threads open
+	// indefinitely via keep-alive. Each request gets a fresh connection.
 	mut headers := http.new_header(
 		key: .content_type
 		value: 'application/json'
 	)
+	headers.add_custom('Connection', 'close') or {}
 	headers.add_custom('Access-Control-Allow-Origin', '*') or {}
 	headers.add_custom('Access-Control-Allow-Headers', 'Content-Type, X-Api-Key') or {}
 	headers.add_custom('Access-Control-Allow-Methods', 'GET, POST, OPTIONS') or {}
 	headers.add_custom('X-Aerie-Proof-Type', 'light') or {}
+	// Security headers — prevent MIME sniffing, clickjacking, XSS reflection
+	headers.add_custom('X-Content-Type-Options', 'nosniff') or {}
+	headers.add_custom('X-Frame-Options', 'DENY') or {}
+	headers.add_custom('X-XSS-Protection', '0') or {}
+	headers.add_custom('Referrer-Policy', 'no-referrer') or {}
+	headers.add_custom('Cache-Control', 'no-store') or {}
 
 	// Handle CORS preflight
 	if req.method == .options {
@@ -413,6 +422,10 @@ fn grpc_listener(port int, mut redis RedisClient) {
 // Phase 2 will implement proper HTTP/2 framing and protobuf serialisation.
 fn handle_grpc_connection(mut conn net.TcpConn, mut redis RedisClient) {
 	defer { conn.close() or {} }
+
+	// Set read timeout to 30 seconds — prevents clients from holding
+	// a connection open indefinitely (slowloris-style attacks).
+	conn.set_read_timeout(30 * time.second)
 
 	// Read length prefix (4 bytes, big-endian)
 	mut len_buf := []u8{len: 4}
