@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-02-19 -->
+<!-- Last updated: 2026-02-28 -->
 
 # Aerie — Project Topology
 
@@ -17,16 +17,44 @@
                         │    (DNSSEC, Zero Trust, mTLS, WAF)      │
                         └───────────────────┬─────────────────────┘
                                             │
-                                            ▼
+                    ┌───────────────────────────────────────────────┐
+                    │           AERIE GATEWAY (V-lang)              │
+                    │                                               │
+                    │  ┌──────────┐  ┌──────────┐  ┌────────────┐ │
+                    │  │ GraphQL  │  │   REST   │  │    gRPC    │ │
+                    │  │ :4000    │  │  :4000   │  │   :4001    │ │
+                    │  └────┬─────┘  └────┬─────┘  └─────┬──────┘ │
+                    │       └─────────────┼──────────────┘         │
+                    │                     │                        │
+                    │       ┌─────────────▼──────────────┐         │
+                    │       │       Policy Gate          │         │
+                    │       │   (X-Api-Key, audit log)   │         │
+                    │       └─────────────┬──────────────┘         │
+                    │                     │                        │
+                    │       ┌─────────────▼──────────────┐         │
+                    │       │     Proof Envelope         │         │
+                    │       │   (SHA-256, UUID, RFC3339) │         │
+                    │       └─────────────┬──────────────┘         │
+                    └─────────────────────┼────────────────────────┘
+                                          │
+                    ┌─────────────────────┼────────────────────────┐
+                    │                     │                        │
+          ┌─────────▼───────┐  ┌──────────▼─────────┐  ┌──────────▼──┐
+          │  LibreSpeed     │  │    Hyperglass      │  │    Redis    │
+          │  :8080          │  │    :8082           │  │    :6379    │
+          │  (speedtest)    │  │    (BGP routes)    │  │ (cache/audit│
+          └─────────────────┘  └────────────────────┘  └─────────────┘
+                    │
+          ┌─────────▼───────┐
+          │  SmokePing      │
+          │  :8081          │
+          │  (jitter)       │
+          └─────────────────┘
+
                         ┌─────────────────────────────────────────┐
                         │           APPLICATION LAYER             │
                         │                                         │
                         │  ┌───────────┐  ┌───────────────────┐  │
-                        │  │  GraphQL  │  │   Forensics HUD   │  │
-                        │  │  Gateway  │  │ (Dashy/Heimdall)  │  │
-                        │  └─────┬─────┘  └────────┬──────────┘  │
-                        │        │                 │              │
-                        │  ┌─────▼─────┐  ┌────────▼──────────┐  │
                         │  │  Vörðr    │  │  Svalinn (Policy) │  │
                         │  └─────┬─────┘  └────────┬──────────┘  │
                         │        │                 │              │
@@ -34,14 +62,12 @@
                         │  │  selur    │  │   Cerro Torre    │  │
                         │  └─────┬─────┘  └───────────────────┘  │
                         │        │                                │
-                        │  ┌─────▼─────┐  ┌───────────────────┐  │
-                        │  │ Probes    │  │ Monitoring        │  │
-                        │  │(Hyperglass│  │ (SmokePing, Zeek, │  │
-                        │  │ LibreSpeed)│  │  Suricata)       │  │
-                        │  └─────┬─────┘  └────────┬──────────┘  │
-                        └────────│─────────────────│──────────────┘
-                                 │                 │
-                                 ▼                 ▼
+                        │  ┌─────▼──────────────────────────┐    │
+                        │  │ Monitoring (Zeek, Suricata)    │    │
+                        │  └────────────────────────────────┘    │
+                        └─────────────────────────────────────────┘
+                                            │
+                                            ▼
                         ┌─────────────────────────────────────────┐
                         │             DATA LAYER                  │
                         │  ┌───────────┐  ┌───────────────────┐  │
@@ -56,7 +82,7 @@
                         │          REPO INFRASTRUCTURE            │
                         │  .bot_directives/   .github/workflows/  │
                         │  contractiles/      justfile            │
-                        │  .machine_readable/ (STATE.a2ml)        │
+                        │  .machine_readable/ (STATE.scm)         │
                         └─────────────────────────────────────────┘
 ```
 
@@ -65,6 +91,21 @@
 ```
 COMPONENT                          STATUS              NOTES
 ─────────────────────────────────  ──────────────────  ─────────────────────────────────
+API GATEWAY (Phase 1 ✓)
+  Gateway Server (V-lang)          ██████████ 100%    Triple-mount: GraphQL+gRPC+REST
+  Policy Gate                      ██████░░░░  60%    Phase 1 permissive, Phase 2 entitlements
+  Proof Envelope                   ██████████ 100%    SHA-256 light mode active
+  LibreSpeed Client                ██████████ 100%    HTTP client wired
+  Hyperglass Client                ██████████ 100%    HTTP client wired
+  Redis Client                     ██████████ 100%    Cache + audit log
+  Containerfile                    ██████████ 100%    Chainguard multi-stage build
+  Compose (5 services)             ██████████ 100%    gateway+librespeed+smokeping+redis+hyperglass
+
+ABI / FFI
+  Idris2 ABI Types                 ██████████ 100%    TelemetrySample, RouteHop, AuditEvent
+  Zig FFI Implementation           ████████░░  80%    init/free lifecycle, types matched
+  Integration Tests                ████████░░  80%    16+ test cases (lifecycle, memory, threads)
+
 SECURITY & VERIFICATION
   Cerro Torre (Bundle Verification) ██████████ 100%    Core logic stable
   Svalinn (Policy Gate)             ██████████ 100%    Policy enforcement active
@@ -80,16 +121,17 @@ FORENSICS HUD
 DATA PLANE
   VerisimDB (Federation)            ██████░░░░  60%    VQL implementation ongoing
   ArangoDB (Graph Forensics)        ████████░░  80%    Schema stable
-  Dragonfly (Realtime Cache)        ██████████ 100%    High-throughput cache active
+  Redis (Realtime Cache + Audit)    ██████████ 100%    RESP client, cache TTL, audit log
   Virtuoso (Semantic XML)           ████░░░░░░  40%    SPARQL 1.2 integration
 
 REPO INFRASTRUCTURE
   .bot_directives/                  ██████████ 100%    Agent alignment rules
-  .machine_readable/                ██████████ 100%    A2ML specs (AI.a2ml)
+  .machine_readable/                ██████████ 100%    SCM specs
   Justfile                          ██████████ 100%    Standard build tasks
+  .claude/CLAUDE.md                 ██████████ 100%    Project-specific AI instructions
 
 ─────────────────────────────────────────────────────────────────────────────
-OVERALL:                            ███████░░░  ~70%   Suite functional, refining scaling
+OVERALL:                            ████████░░  ~40%   Phase 1 complete, gateway functional
 ```
 
 ## Key Dependencies
@@ -103,8 +145,24 @@ Cerro Torre ───► Svalinn ───► Vörðr ───► selur
                    │                       │            │
                    └────────────┬──────────┴────────────┘
                                 ▼
-                             COMPLETE
+                          Aerie Gateway
+                       (GraphQL+gRPC+REST)
+                                │
+                       ┌────────┼────────┐
+                       ▼        ▼        ▼
+                   LibreSpeed Hyperglass Redis
 ```
+
+## Service Ports
+
+| Service | Host Port | Internal Port | Protocol |
+|---------|-----------|---------------|----------|
+| Gateway (HTTP) | 4000 | 4000 | REST + GraphQL |
+| Gateway (gRPC) | 4001 | 4001 | Length-prefixed binary |
+| LibreSpeed | 8080 | 80 | HTTP |
+| SmokePing | 8081 | 80 | HTTP |
+| Hyperglass | 8082 | 80 | HTTP |
+| Redis | 6379 | 6379 | RESP |
 
 ## Update Protocol
 

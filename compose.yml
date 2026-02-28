@@ -9,6 +9,31 @@
 version: "3.8"
 
 services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: aerie-gateway
+    ports:
+      - "4000:4000"   # REST + GraphQL
+      - "4001:4001"   # gRPC
+    environment:
+      - PORT=4000
+      - GRPC_PORT=4001
+      - REDIS_URL=redis://redis:6379
+      - LIBRESPEED_URL=http://librespeed:8080
+      - HYPERGLASS_URL=http://hyperglass:8082
+    depends_on:
+      - librespeed
+      - smokeping
+      - redis
+      - hyperglass
+    networks:
+      - aerie-net
+    restart: unless-stopped
+    security_opt:
+      - label=disable
+
   librespeed:
     image: docker.io/linuxserver/librespeed:latest
     container_name: aerie-librespeed

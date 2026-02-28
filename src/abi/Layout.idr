@@ -10,7 +10,7 @@
 
 module Aerie.ABI.Layout
 
-import {{PROJECT}}.ABI.Types
+import Aerie.ABI.Types
 import Data.Vect
 import Data.So
 

@@ -15,8 +15,17 @@
 
 [x] Finalise Oxford British English documentation standards.
 [x] Select toolchain: LibreSpeed (Speed), Hyperglass (Path), SmokePing (Stability).
-[ ] Initial docker-compose.yml defining the "Forensics Bridge" network.
-[ ] GraphQL gateway scaffold with policy gate (entitlements).
+[x] Initial compose.yml defining the "Forensics Bridge" network (5 services: gateway, librespeed, smokeping, redis, hyperglass).
+[x] Triple-mount API gateway (GraphQL + gRPC + REST) with policy gate, proof envelopes, and service clients.
+
+=== Phase 1 Implementation Details
+
+* **Gateway** (V-lang): `src/api/v/main.v` — HTTP on port 4000, gRPC on port 4001
+* **Proof envelopes**: SHA-256 hash-based ("light" mode) on all responses
+* **Policy gate**: Phase 1 permissive — all requests allowed, API keys validated and logged
+* **Service clients**: LibreSpeed (telemetry), Hyperglass (BGP routes), Redis (cache + audit)
+* **Container**: Chainguard wolfi-base (build) → static (runtime), statically linked binary
+* **Protocols**: GraphQL (POST /graphql), REST (GET /api/v1/*), gRPC (length-prefixed binary)
 
 == Phase 2: Historical Integrity & Forensics
 
