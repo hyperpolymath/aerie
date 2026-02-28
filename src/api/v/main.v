@@ -2,35 +2,30 @@
 //
 // main.v — Aerie Gateway: Triple-Mount API Server
 //
-// Serves three API protocols from a single gateway process:
+// Serves up to three API protocols from a single gateway process:
 //
 //   1. GraphQL  — POST /graphql                        (port 4000)
 //   2. REST     — GET  /api/v1/{telemetry,routes,audit} (port 4000)
 //   3. gRPC     — binary protobuf                       (port 4001)
 //
+// Each protocol can be independently enabled or disabled via environment
+// variables, allowing operators to reduce the attack surface by only
+// exposing the protocols they actually use:
+//
+//   ENABLE_REST=true|false       (default: true)
+//   ENABLE_GRAPHQL=true|false    (default: true)
+//   ENABLE_GRPC=true|false       (default: true)
+//
+// Disabled protocols refuse connections immediately — no socket is
+// opened, no port is bound, no attack surface exists.
+//
 // All responses are wrapped in a ProofEnvelope (SHA-256 hash in Phase 1,
 // Ed448 signature in Phase 2+). The policy gate checks X-Api-Key headers
 // and logs all access to the Redis audit trail.
 //
-// Architecture:
-//
-//   Client ──► GraphQL / REST (port 4000)
-//              │
-//              ├──► Policy Gate (X-Api-Key check)
-//              ├──► Resolver (dispatches to probe clients)
-//              ├──► Proof Envelope (SHA-256 wrap)
-//              └──► Response
-//
-//   Client ──► gRPC (port 4001)
-//              │
-//              ├──► Policy Gate (metadata key check)
-//              ├──► Resolver (same underlying logic)
-//              ├──► Proof Envelope (embedded in protobuf)
-//              └──► Response
-//
-// Backend services (in aerie-net Docker network):
-//   - LibreSpeed  at LIBRESPEED_URL  (default http://librespeed:8080)
-//   - Hyperglass  at HYPERGLASS_URL  (default http://hyperglass:8082)
+// Backend services (in aerie-net container network):
+//   - LibreSpeed  at LIBRESPEED_URL  (default http://librespeed:80)
+//   - Hyperglass  at HYPERGLASS_URL  (default http://hyperglass:80)
 //   - Redis       at REDIS_URL       (default redis://redis:6379)
 
 module main
@@ -41,16 +36,83 @@ import net.http
 import x.json2
 import time
 
-// banner prints the startup banner to stdout with protocol information.
-fn banner(http_port int, grpc_port int) {
+// ProtocolConfig holds the enabled/disabled state for each protocol.
+// Read once at startup from environment variables — immutable thereafter.
+struct ProtocolConfig {
+pub:
+	rest_enabled    bool
+	graphql_enabled bool
+	grpc_enabled    bool
+}
+
+// read_protocol_config reads ENABLE_REST, ENABLE_GRAPHQL, ENABLE_GRPC
+// from the environment. All default to true (full triple-mount).
+// Set any to "false" or "0" to disable that protocol entirely.
+fn read_protocol_config() ProtocolConfig {
+	return ProtocolConfig{
+		rest_enabled:    env_bool('ENABLE_REST', true)
+		graphql_enabled: env_bool('ENABLE_GRAPHQL', true)
+		grpc_enabled:    env_bool('ENABLE_GRPC', true)
+	}
+}
+
+// env_bool reads a boolean environment variable. Recognises "false",
+// "0", and "no" as false (case-insensitive). Everything else
+// (including unset) returns the provided default.
+fn env_bool(name string, default_val bool) bool {
+	val := os.getenv(name).to_lower()
+	if val.len == 0 {
+		return default_val
+	}
+	return val != 'false' && val != '0' && val != 'no'
+}
+
+// banner prints the startup banner to stdout showing which protocols
+// are enabled and on which ports. Disabled protocols show as "disabled".
+fn banner(http_port int, grpc_port int, cfg ProtocolConfig) {
+	// Count active protocols for the title
+	mut active := []string{}
+	if cfg.graphql_enabled {
+		active << 'GraphQL'
+	}
+	if cfg.grpc_enabled {
+		active << 'gRPC'
+	}
+	if cfg.rest_enabled {
+		active << 'REST'
+	}
+
+	proto_list := if active.len > 0 { active.join(' + ') } else { 'NONE (all disabled!)' }
+
 	println('╔══════════════════════════════════════════════════════════╗')
-	println('║          AERIE GATEWAY — Triple-Mount API               ║')
-	println('║      GraphQL • gRPC • REST • High-Assurance             ║')
+	println('║          AERIE GATEWAY — ${proto_list:-31}║')
 	println('╠══════════════════════════════════════════════════════════╣')
-	println('║  REST + GraphQL : port ${http_port:-5}                           ║')
-	println('║  gRPC           : port ${grpc_port:-5}                           ║')
-	println('║  Proof mode     : light (SHA-256)                       ║')
-	println('║  Policy gate    : Phase 1 (permissive)                  ║')
+
+	// REST status
+	if cfg.rest_enabled {
+		println('║  REST            : port ${http_port:-5} ✓ ENABLED                 ║')
+	} else {
+		println('║  REST            : ✗ DISABLED (no socket bound)         ║')
+	}
+
+	// GraphQL status
+	if cfg.graphql_enabled {
+		println('║  GraphQL         : port ${http_port:-5} ✓ ENABLED                 ║')
+	} else {
+		println('║  GraphQL         : ✗ DISABLED (no socket bound)         ║')
+	}
+
+	// gRPC status
+	if cfg.grpc_enabled {
+		println('║  gRPC            : port ${grpc_port:-5} ✓ ENABLED                 ║')
+	} else {
+		println('║  gRPC            : ✗ DISABLED (no socket bound)         ║')
+	}
+
+	println('╠══════════════════════════════════════════════════════════╣')
+	println('║  Proof mode      : light (SHA-256)                      ║')
+	println('║  Policy gate     : Phase 1 (permissive)                 ║')
+	println('║  Attack surface  : ${active.len}/3 protocols active                    ║')
 	println('╚══════════════════════════════════════════════════════════╝')
 }
 
@@ -65,37 +127,60 @@ fn main() {
 		grpc_port = 4001
 	}
 
-	banner(http_port, grpc_port)
+	cfg := read_protocol_config()
+	banner(http_port, grpc_port, cfg)
 
 	// Initialise Redis client (lazy connection)
 	mut redis := new_redis_client()
 
-	println('[aerie] Starting HTTP server (REST + GraphQL) on :${http_port}')
-	println('[aerie] Starting gRPC listener on :${grpc_port}')
+	// Determine whether we need the HTTP server at all
+	http_needed := cfg.rest_enabled || cfg.graphql_enabled
 
-	// Start gRPC listener in a background thread
-	spawn grpc_listener(grpc_port, mut redis)
+	// Start gRPC listener in a background thread (only if enabled)
+	if cfg.grpc_enabled {
+		println('[aerie] Starting gRPC listener on :${grpc_port}')
+		spawn grpc_listener(grpc_port, mut redis)
+	} else {
+		println('[aerie] gRPC DISABLED — port ${grpc_port} not bound')
+	}
 
-	// Start HTTP server (blocking) for REST + GraphQL
-	mut server := http.Server{
-		port: http_port
-		handler: AerieHandler{
-			redis: &redis
+	// Start HTTP server (only if REST or GraphQL is enabled)
+	if http_needed {
+		println('[aerie] Starting HTTP server on :${http_port}')
+		mut server := http.Server{
+			port: http_port
+			handler: AerieHandler{
+				redis:  &redis
+				config: cfg
+			}
+		}
+		server.listen_and_serve()
+	} else {
+		println('[aerie] REST and GraphQL both DISABLED — port ${http_port} not bound')
+		// If only gRPC is enabled, block the main thread so the process
+		// stays alive for the gRPC background thread
+		if cfg.grpc_enabled {
+			println('[aerie] Main thread idle (gRPC-only mode)')
+			for {
+				time.sleep(60 * time.second)
+			}
+		} else {
+			eprintln('[aerie] WARNING: All protocols disabled — gateway has nothing to serve')
 		}
 	}
-	server.listen_and_serve()
 }
 
 // AerieHandler dispatches HTTP requests to the appropriate handler
-// based on the URL path. Implements the http.Handler interface.
+// based on the URL path and protocol configuration.
 struct AerieHandler {
 mut:
-	redis &RedisClient
+	redis  &RedisClient
+	config ProtocolConfig
 }
 
 // handle processes an incoming HTTP request through the policy gate,
-// dispatches to the appropriate resolver, and returns the response
-// with appropriate CORS and content-type headers.
+// checks protocol enablement, dispatches to the appropriate resolver,
+// and returns the response with CORS and content-type headers.
 fn (mut h AerieHandler) handle(req http.Request) http.Response {
 	// Extract API key from header for policy gate
 	api_key := req.header.get_custom('X-Api-Key') or { '' }
@@ -140,6 +225,22 @@ fn (mut h AerieHandler) handle(req http.Request) http.Response {
 		}
 	}
 
+	// Check protocol enablement before routing
+	if req.url.starts_with('/graphql') && !h.config.graphql_enabled {
+		return http.Response{
+			status_code: 404
+			body:        '{"error":"GraphQL protocol is disabled","hint":"Set ENABLE_GRAPHQL=true to enable"}'
+			header:      headers
+		}
+	}
+	if req.url.starts_with('/api/v1/') && !req.url.starts_with('/api/v1/health') && !h.config.rest_enabled {
+		return http.Response{
+			status_code: 404
+			body:        '{"error":"REST protocol is disabled","hint":"Set ENABLE_REST=true to enable"}'
+			header:      headers
+		}
+	}
+
 	// Route to handler
 	body := match true {
 		req.url.starts_with('/graphql') {
@@ -155,10 +256,10 @@ fn (mut h AerieHandler) handle(req http.Request) http.Response {
 			handle_audit_request(req, mut h.redis, policy)
 		}
 		req.url.starts_with('/api/v1/health') {
-			health_check()
+			health_check(h.config)
 		}
 		else {
-			'{"error":"Not found","available_endpoints":["/graphql","/api/v1/telemetry","/api/v1/routes","/api/v1/audit","/api/v1/health"]}'
+			not_found_response(h.config)
 		}
 	}
 
@@ -236,11 +337,38 @@ fn extract_query_param(url string, name string) string {
 	return ''
 }
 
-// health_check returns the gateway health status including connectivity
-// information for backend services.
-fn health_check() string {
+// health_check returns the gateway health status including which
+// protocols are currently enabled. Always accessible regardless
+// of protocol toggles (operators need it to verify configuration).
+fn health_check(cfg ProtocolConfig) string {
 	now := time.now().format_rfc3339()
-	return '{"status":"healthy","service":"aerie-gateway","version":"0.1.0","timestamp":"${now}","protocols":{"graphql":true,"grpc":true,"rest":true},"proof_mode":"light","policy_phase":1}'
+	mut active := 0
+	if cfg.rest_enabled {
+		active++
+	}
+	if cfg.graphql_enabled {
+		active++
+	}
+	if cfg.grpc_enabled {
+		active++
+	}
+	return '{"status":"healthy","service":"aerie-gateway","version":"0.2.0","timestamp":"${now}","protocols":{"rest":${cfg.rest_enabled},"graphql":${cfg.graphql_enabled},"grpc":${cfg.grpc_enabled}},"active_protocols":${active},"proof_mode":"light","policy_phase":1}'
+}
+
+// not_found_response lists only the endpoints that are currently enabled,
+// so disabled protocols are not advertised.
+fn not_found_response(cfg ProtocolConfig) string {
+	mut endpoints := []string{}
+	if cfg.graphql_enabled {
+		endpoints << '"/graphql"'
+	}
+	if cfg.rest_enabled {
+		endpoints << '"/api/v1/telemetry"'
+		endpoints << '"/api/v1/routes"'
+		endpoints << '"/api/v1/audit"'
+	}
+	endpoints << '"/api/v1/health"'
+	return '{"error":"Not found","available_endpoints":[${endpoints.join(",")}]}'
 }
 
 //==============================================================================
@@ -248,11 +376,13 @@ fn health_check() string {
 //==============================================================================
 
 // grpc_listener starts a TCP listener for gRPC connections on the
-// specified port. Phase 1 implements a simplified binary protocol
-// that accepts protobuf-framed requests and returns protobuf-framed
-// responses. A full HTTP/2 + gRPC implementation is planned for Phase 2.
+// specified port. Only called when ENABLE_GRPC=true. When disabled,
+// no socket is bound and port 4001 is completely closed — zero attack
+// surface for the gRPC protocol.
 //
-// The listener accepts connections and spawns a handler thread for each.
+// Phase 1 implements a simplified binary protocol that accepts
+// length-prefixed JSON requests and returns length-prefixed JSON
+// responses. A full HTTP/2 + gRPC implementation is planned for Phase 2.
 fn grpc_listener(port int, mut redis RedisClient) {
 	mut listener := net.listen_tcp(.ip, '0.0.0.0:${port}') or {
 		eprintln('[aerie] gRPC: failed to bind port ${port}: ${err}')

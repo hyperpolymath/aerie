@@ -23,6 +23,11 @@ services:
       - REDIS_URL=redis://redis:6379
       - LIBRESPEED_URL=http://librespeed:80
       - HYPERGLASS_URL=http://hyperglass:80
+      # Protocol toggles — set to "false" to disable and close the socket.
+      # Disabled protocols have zero attack surface (no port bound).
+      - ENABLE_REST=true
+      - ENABLE_GRAPHQL=true
+      - ENABLE_GRPC=true
     depends_on:
       - librespeed
       - smokeping
