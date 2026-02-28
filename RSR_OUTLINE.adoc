@@ -1,4 +1,4 @@
-= RSR Template Repository
+= Aerie — Cyber-Focused Network Diagnostic Suite
 
 image:[Palimpsest-MPL-1.0,link="https://github.com/hyperpolymath/palimpsest-license"] image:[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-license"]
 :toc:
