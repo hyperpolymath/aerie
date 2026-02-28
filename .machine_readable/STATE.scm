@@ -40,6 +40,18 @@
   (session-history
     (session
       (date "2026-02-28")
+      (summary "Block 1 immediate fixes audit and submodule investigation")
+      (changes
+        ("Verified .gitignore already has PMPL-1.0-or-later (not AGPL)"
+         "Verified all 4 ABI/FFI files already instantiated with 'aerie' (no {{project}} placeholders)"
+         "Verified V-lang already in .claude/CLAUDE.md allowed languages"
+         "Verified compose.yml already has active gateway service (5 services)"
+         "Investigated submodule status: bgp-backbone-lab and src/hyperglass tracked as gitlinks (mode 160000) but no .gitmodules file exists — orphaned submodule state"
+         "bgp-backbone-lab: embedded repo pointing to hyperpolymath/bgp-backbone-lab, has modified Foreign.idr"
+         "src/hyperglass: embedded fork of thatmattlove/hyperglass with local modifications (Dockerfile->Containerfile, route/query changes)"
+         "Remaining template placeholders in RSR boilerplate files (CONTRIBUTING.md, CODE_OF_CONDUCT.md, etc.) noted for future cleanup")))
+    (session
+      (date "2026-02-28")
       (summary "Phase 1 gateway implementation")
       (changes
         ("Fixed .gitignore AGPL header to PMPL-1.0-or-later"
