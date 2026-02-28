@@ -147,11 +147,13 @@ fn main() {
 	// Start HTTP server (only if REST or GraphQL is enabled)
 	if http_needed {
 		println('[aerie] Starting HTTP server on :${http_port}')
+		verbs := new_verb_governor()
 		mut server := http.Server{
 			port: http_port
 			handler: AerieHandler{
 				redis:  &redis
 				config: cfg
+				verbs:  verbs
 			}
 		}
 		server.listen_and_serve()
@@ -171,11 +173,14 @@ fn main() {
 }
 
 // AerieHandler dispatches HTTP requests to the appropriate handler
-// based on the URL path and protocol configuration.
+// based on the URL path and protocol configuration. Verb governance
+// is enforced before any routing — disallowed methods are rejected
+// (or stealth-404'd) before reaching the resolver layer.
 struct AerieHandler {
 mut:
-	redis  &RedisClient
-	config ProtocolConfig
+	redis    &RedisClient
+	config   ProtocolConfig
+	verbs    VerbGovernor
 }
 
 // handle processes an incoming HTTP request through the policy gate,
@@ -217,7 +222,31 @@ fn (mut h AerieHandler) handle(req http.Request) http.Response {
 	headers.add_custom('Referrer-Policy', 'no-referrer') or {}
 	headers.add_custom('Cache-Control', 'no-store') or {}
 
-	// Handle CORS preflight
+	// Verb governance — enforce allowed HTTP methods per route.
+	// This runs BEFORE the policy gate so disallowed verbs never
+	// reach any business logic. Stealth mode returns 404 so
+	// attackers cannot distinguish denied from non-existent.
+	verb_decision := h.verbs.check(req.method.str(), req.url)
+	if !verb_decision.allowed {
+		// Log the denied verb attempt
+		denied_audit := AuditEvent{
+			event_id:   generate_uuid_v4()
+			valid_time: time.now().format_rfc3339()
+			tx_time:    time.now().format_rfc3339()
+			severity:   'warning'
+			message:    'Verb denied: ${verb_decision.verb} on ${req.url} [rule=${verb_decision.rule_name}, stealth=${verb_decision.stealth}]'
+			tags:       ['verb-governance', 'denied', verb_decision.verb.to_lower()]
+		}
+		h.redis.log_audit(denied_audit)
+
+		return http.Response{
+			status_code: verb_decision.denial_status_code()
+			body:        verb_decision.denial_body(h.config)
+			header:      headers
+		}
+	}
+
+	// Handle CORS preflight (verb governor already approved OPTIONS above)
 	if req.method == .options {
 		return http.Response{
 			status_code: 204
@@ -347,8 +376,12 @@ fn extract_query_param(url string, name string) string {
 }
 
 // health_check returns the gateway health status including which
-// protocols are currently enabled. Always accessible regardless
-// of protocol toggles (operators need it to verify configuration).
+// protocols are currently enabled, verb governance status, and
+// attack surface metrics. Always accessible regardless of protocol
+// toggles (operators need it to verify configuration).
+//
+// Influenced by hybrid-automation-router's health checker pattern:
+// report backend availability alongside gateway status.
 fn health_check(cfg ProtocolConfig) string {
 	now := time.now().format_rfc3339()
 	mut active := 0
@@ -361,7 +394,17 @@ fn health_check(cfg ProtocolConfig) string {
 	if cfg.grpc_enabled {
 		active++
 	}
-	return '{"status":"healthy","service":"aerie-gateway","version":"0.2.0","timestamp":"${now}","protocols":{"rest":${cfg.rest_enabled},"graphql":${cfg.graphql_enabled},"grpc":${cfg.grpc_enabled}},"active_protocols":${active},"proof_mode":"light","policy_phase":1}'
+
+	// Count bound ports (attack surface metric)
+	mut bound_ports := 0
+	if cfg.rest_enabled || cfg.graphql_enabled {
+		bound_ports++
+	}
+	if cfg.grpc_enabled {
+		bound_ports++
+	}
+
+	return '{"status":"healthy","service":"aerie-gateway","version":"0.2.0","timestamp":"${now}","protocols":{"rest":${cfg.rest_enabled},"graphql":${cfg.graphql_enabled},"grpc":${cfg.grpc_enabled}},"active_protocols":${active},"bound_ports":${bound_ports},"verb_governance":true,"stealth_mode":true,"proof_mode":"light","policy_phase":1}'
 }
 
 // not_found_response lists only the endpoints that are currently enabled,
