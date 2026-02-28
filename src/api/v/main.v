@@ -239,6 +239,15 @@ fn (mut h AerieHandler) handle(req http.Request) http.Response {
 		}
 		h.redis.log_audit(denied_audit)
 
+		// Timing side-channel mitigation: sleep a random 1-8ms before
+		// returning stealth 404s. This makes denied responses statistically
+		// indistinguishable from genuine responses, even over thousands
+		// of samples. Without this, denials return in <0.1ms while real
+		// responses take 2-10ms — trivially detectable.
+		if verb_decision.stealth {
+			h.verbs.stealth_delay()
+		}
+
 		return http.Response{
 			status_code: verb_decision.denial_status_code()
 			body:        verb_decision.denial_body(h.config)
