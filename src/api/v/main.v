@@ -131,8 +131,11 @@ fn main() {
 	cfg := read_protocol_config()
 	banner(http_port, grpc_port, cfg)
 
-	// Initialise Redis client (lazy connection)
-	mut redis := new_redis_client()
+	// Initialise Redis client (lazy connection).
+	// Heap-allocated so it can be shared by reference across threads.
+	mut redis := &RedisClient{
+		...new_redis_client()
+	}
 
 	// Initialise VerisimDB client (HTTP REST, fire-and-forget)
 	verisimdb := new_verisimdb_client()
@@ -140,7 +143,9 @@ fn main() {
 	// Determine whether we need the HTTP server at all
 	http_needed := cfg.rest_enabled || cfg.graphql_enabled
 
-	// Start gRPC listener in a background thread (only if enabled)
+	// Start gRPC listener in a background thread (only if enabled).
+	// The redis parameter is passed as a heap reference (&RedisClient)
+	// so that spawn can safely share it across threads.
 	if cfg.grpc_enabled {
 		println('[aerie] Starting gRPC listener on :${grpc_port}')
 		spawn grpc_listener(grpc_port, mut redis)
@@ -148,14 +153,15 @@ fn main() {
 		println('[aerie] gRPC DISABLED — port ${grpc_port} not bound')
 	}
 
-	// Start HTTP server (only if REST or GraphQL is enabled)
+	// Start HTTP server (only if REST or GraphQL is enabled).
+	// V 0.5.0 uses `addr` (string) instead of `port` (int) in http.Server.
 	if http_needed {
 		println('[aerie] Starting HTTP server on :${http_port}')
 		verbs := new_verb_governor()
 		mut server := http.Server{
-			port: http_port
+			addr: ':${http_port}'
 			handler: AerieHandler{
-				redis:     &redis
+				redis:     redis
 				config:    cfg
 				verbs:     verbs
 				verisimdb: verisimdb
@@ -358,7 +364,7 @@ fn handle_graphql_request(req http.Request, mut redis RedisClient, policy Policy
 // extract_graphql_query pulls the "query" field from a JSON request body.
 // Handles standard GraphQL-over-HTTP format: {"query": "...", "variables": {...}}
 fn extract_graphql_query(body string) string {
-	parsed := json2.raw_decode(body) or { return body }
+	parsed := json2.decode[json2.Any](body) or { return body }
 	obj := parsed.as_map()
 	query_any := obj['query'] or { return body }
 	return query_any.str()
@@ -502,7 +508,7 @@ fn not_found_response(cfg ProtocolConfig) string {
 // Phase 1 implements a simplified binary protocol that accepts
 // length-prefixed JSON requests and returns length-prefixed JSON
 // responses. A full HTTP/2 + gRPC implementation is planned for Phase 2.
-fn grpc_listener(port int, mut redis RedisClient) {
+fn grpc_listener(port int, mut redis &RedisClient) {
 	mut listener := net.listen_tcp(.ip, '0.0.0.0:${port}') or {
 		eprintln('[aerie] gRPC: failed to bind port ${port}: ${err}')
 		return
@@ -530,7 +536,7 @@ fn grpc_listener(port int, mut redis RedisClient) {
 //   {"method": "GetAuditSnapshot", "limit": 50}
 //
 // Phase 2 will implement proper HTTP/2 framing and protobuf serialisation.
-fn handle_grpc_connection(mut conn net.TcpConn, mut redis RedisClient) {
+fn handle_grpc_connection(mut conn net.TcpConn, mut redis &RedisClient) {
 	defer { conn.close() or {} }
 
 	// Set read timeout to 30 seconds — prevents clients from holding
@@ -543,7 +549,7 @@ fn handle_grpc_connection(mut conn net.TcpConn, mut redis RedisClient) {
 		eprintln('[aerie] gRPC: failed to read length prefix')
 		return
 	}
-	msg_len := int(len_buf[0]) << 24 | int(len_buf[1]) << 16 | int(len_buf[2]) << 8 | int(len_buf[3])
+	msg_len := int(u32(len_buf[0]) << 24 | u32(len_buf[1]) << 16 | u32(len_buf[2]) << 8 | u32(len_buf[3]))
 
 	if msg_len <= 0 || msg_len > 65536 {
 		eprintln('[aerie] gRPC: invalid message length ${msg_len}')
@@ -559,7 +565,7 @@ fn handle_grpc_connection(mut conn net.TcpConn, mut redis RedisClient) {
 	body := body_buf.bytestr()
 
 	// Parse JSON request
-	parsed := json2.raw_decode(body) or {
+	parsed := json2.decode[json2.Any](body) or {
 		send_grpc_response(mut conn, '{"error":"Invalid JSON"}')
 		return
 	}

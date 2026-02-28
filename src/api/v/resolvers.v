@@ -17,7 +17,6 @@
 module main
 
 import time
-import x.json2
 
 // resolve_telemetry fetches telemetry data from LibreSpeed,
 // wraps it in a proof envelope, and returns the complete JSON response.
@@ -263,7 +262,7 @@ fn extract_string_arg(query string, arg_name string) string {
 	for pattern in patterns {
 		idx := query.index(pattern) or { continue }
 		start := idx + pattern.len
-		end := query.index_after('"', start)
+		end := query.index_after('"', start) or { continue }
 		if end > start {
 			return query[start..end]
 		}

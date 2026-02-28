@@ -187,7 +187,7 @@ fn parse_verisimdb_response(body string) []string {
 	mut results := []string{}
 
 	// Attempt to parse as {"events": [...]}
-	parsed := json2.raw_decode(body) or {
+	parsed := json2.decode[json2.Any](body) or {
 		// Cannot parse — return body as-is in a single-element array
 		if body.len > 0 {
 			return [body]
@@ -204,7 +204,7 @@ fn parse_verisimdb_response(body string) []string {
 		return results
 	}
 
-	events_arr := events_any.arr()
+	events_arr := events_any.as_array()
 	for event in events_arr {
 		// Re-encode each event as a JSON string
 		results << event.str()

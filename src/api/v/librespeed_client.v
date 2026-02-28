@@ -85,7 +85,7 @@ pub fn get_telemetry() TelemetryPayload {
 	// Parse the LibreSpeed response.
 	// The getIP.php endpoint returns JSON with connection info.
 	// We extract what's available and synthesise latency from response time.
-	parsed := json2.raw_decode(response.body) or {
+	_ = json2.decode[json2.Any](response.body) or {
 		return TelemetryPayload{
 			samples: [
 				TelemetrySample{
@@ -98,7 +98,8 @@ pub fn get_telemetry() TelemetryPayload {
 		}
 	}
 
-	// Build a sample from the available data
+	// Build a sample from the available data.
+	// Phase 2 will extract actual speed/latency values from the response.
 	return TelemetryPayload{
 		samples: [
 			TelemetrySample{

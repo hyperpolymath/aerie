@@ -14,7 +14,6 @@ module main
 
 import net.http
 import os
-import time
 import x.json2
 
 // RouteHop represents a single hop in a BGP route path.
@@ -78,7 +77,7 @@ pub fn get_route_forensics(target string) RouteForensicsPayload {
 	}
 
 	// Parse the Hyperglass response into RouteHop records
-	parsed := json2.raw_decode(response.body) or {
+	parsed := json2.decode[json2.Any](response.body) or {
 		eprintln('hyperglass: failed to parse response JSON')
 		return RouteForensicsPayload{
 			target: target
@@ -102,7 +101,7 @@ fn parse_route_hops(data json2.Any) []RouteHop {
 
 	// Hyperglass returns route data in various formats depending on
 	// the router type. We attempt to extract hop-by-hop information.
-	arr := data.arr()
+	arr := data.as_array()
 	for i, item in arr {
 		obj := item.as_map()
 		ip := if 'prefix' in obj {

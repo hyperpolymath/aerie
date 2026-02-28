@@ -14,7 +14,6 @@ module main
 import crypto.sha256
 import rand
 import time
-import x.json2
 
 // ProofEnvelope wraps every API response with a cryptographic hash
 // and metadata for auditability and tamper detection.

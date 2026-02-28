@@ -13,7 +13,6 @@ module main
 
 import net
 import os
-import time
 
 // RedisClient holds a TCP connection to the Redis server.
 // Connection is lazily established on first use.

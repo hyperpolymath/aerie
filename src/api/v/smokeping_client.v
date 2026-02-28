@@ -20,7 +20,6 @@ module main
 import net.http
 import os
 import time
-import x.json2
 
 // SmokePingSample represents a single measurement snapshot from SmokePing.
 // Fields match src/abi/Types.idr and src/api/proto/aerie.proto SmokePingSample.

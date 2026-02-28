@@ -43,6 +43,22 @@
 
   (session-history
     (session
+      (date "2026-02-28d")
+      (summary "V 0.5.0 compilation fixes — clean build with zero errors/warnings")
+      (changes
+        ("Fixed http.Server port→addr field change (V 0.5.0 API migration)"
+         "Fixed spawn thread safety: RedisClient now heap-allocated (&RedisClient) for safe cross-thread sharing"
+         "Replaced deprecated json2.raw_decode() with json2.decode[json2.Any]() in main.v, hyperglass_client.v, librespeed_client.v, verisimdb_client.v"
+         "Replaced deprecated .arr() with .as_array() in hyperglass_client.v and verisimdb_client.v"
+         "Fixed index_after() returning ?int — added or{} unwrap in extract_string_arg()"
+         "Added @[heap] attribute to TrieNode for safe referencing in verb_governance.v"
+         "Fixed map pointer access with or{} blocks in trie_insert and trie_lookup"
+         "Fixed signed integer shift notice — use u32 intermediate for big-endian length prefix"
+         "Removed 5 unused imports (time, x.json2) across hyperglass_client.v, proof.v, redis_client.v, resolvers.v, smokeping_client.v"
+         "Fixed unused variable warning for parsed in librespeed_client.v"
+         "Verified RSR template placeholders — all {{}} patterns are in bgp-backbone-lab submodule (not aerie proper)"
+         "Gateway compiles clean: v src/api/v/ → 3.7 MB ELF x86-64 binary, 0 errors, 0 warnings, 0 notices")))
+    (session
       (date "2026-02-28c")
       (summary "Phase 2: SmokePing integration + VerisimDB bitemporal audit")
       (changes

@@ -43,6 +43,7 @@ pub:
 // Optimisation ported from cadre-router's parser combinator pattern:
 // instead of trying all parsers linearly, build a prefix tree so each
 // path segment narrows the search space immediately.
+@[heap]
 struct TrieNode {
 pub mut:
 	children map[string]&TrieNode
@@ -85,13 +86,13 @@ fn new_trie_node() &TrieNode {
 fn trie_insert(mut root TrieNode, rule VerbRule) {
 	// Split path into segments, filtering out empty strings
 	segments := rule.pattern.split('/').filter(it.len > 0)
-	mut current := &root
+	mut current := unsafe { &root }
 
 	for segment in segments {
 		if segment !in current.children {
 			current.children[segment] = new_trie_node()
 		}
-		current = current.children[segment]
+		current = current.children[segment] or { return }
 	}
 	current.rule = rule
 }
@@ -105,7 +106,7 @@ fn trie_lookup(root &TrieNode, url string) ?VerbRule {
 	path := if idx := url.index('?') { url[..idx] } else { url }
 	segments := path.split('/').filter(it.len > 0)
 
-	mut current := root
+	mut current := unsafe { root }
 	mut best_match := ?VerbRule(none)
 
 	// Check root-level rule (e.g., "/" catch-all)
@@ -115,7 +116,7 @@ fn trie_lookup(root &TrieNode, url string) ?VerbRule {
 
 	for segment in segments {
 		if segment in current.children {
-			current = current.children[segment]
+			current = current.children[segment] or { break }
 			if rule := current.rule {
 				best_match = rule
 			}
