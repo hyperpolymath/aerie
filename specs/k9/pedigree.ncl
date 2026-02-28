@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: PMPL-1.0-or-later
 # Copied from k9-svc/pedigree.ncl for local Yard-level components.
 # Keep in sync with /var/mnt/eclipse/repos/k9-svc/pedigree.ncl
 
