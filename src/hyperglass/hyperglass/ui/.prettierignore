@@ -1,0 +1,10 @@
+node_modules
+dist
+package.json
+yarn.lock
+package-lock.json
+.eslintrc
+tsconfig.json
+.next/
+favicon-formats.ts
+custom.*[js, html]

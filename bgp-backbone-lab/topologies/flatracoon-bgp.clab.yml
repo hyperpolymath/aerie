@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# FlatRacoon BGP backbone lab - minimal 3-router eBGP topology
+# Spine + 2 leaf routers using FRRouting
+
+name: flatracoon-bgp
+
+topology:
+  nodes:
+    spine:
+      kind: linux
+      image: frrouting/frr:latest
+      env:
+        FRR_DEFAULTS: traditional
+      binds:
+        - configs/spine-frr.conf:/etc/frr/frr.conf
+      exec:
+        - ip addr add 10.0.1.1/30 dev eth1
+        - ip addr add 10.0.2.1/30 dev eth2
+        - ip addr add fd00:bgp::1/128 dev lo
+
+    leaf1:
+      kind: linux
+      image: frrouting/frr:latest
+      env:
+        FRR_DEFAULTS: traditional
+      binds:
+        - configs/leaf1-frr.conf:/etc/frr/frr.conf
+      exec:
+        - ip addr add 10.0.1.2/30 dev eth1
+        - ip addr add 172.16.1.1/24 dev eth2
+        - ip addr add fd00:bgp::2/128 dev lo
+
+    leaf2:
+      kind: linux
+      image: frrouting/frr:latest
+      env:
+        FRR_DEFAULTS: traditional
+      binds:
+        - configs/leaf2-frr.conf:/etc/frr/frr.conf
+      exec:
+        - ip addr add 10.0.2.2/30 dev eth1
+        - ip addr add 172.16.2.1/24 dev eth2
+        - ip addr add fd00:bgp::3/128 dev lo
+
+  links:
+    - endpoints: ["spine:eth1", "leaf1:eth1"]
+    - endpoints: ["spine:eth2", "leaf2:eth1"]

@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# K8s Job to deploy the containerlab BGP topology
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bgp-lab-deploy
+  namespace: bgp-lab
+  labels:
+    app.kubernetes.io/name: bgp-backbone-lab
+    app.kubernetes.io/component: topology-deployer
+    app.kubernetes.io/part-of: flatracoon
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bgp-backbone-lab
+    spec:
+      restartPolicy: Never
+      serviceAccountName: containerlab-runner
+      containers:
+        - name: containerlab
+          image: ghcr.io/srl-labs/containerlab:latest
+          command:
+            - containerlab
+            - deploy
+            - --topo
+            - /topology/flatracoon-bgp.clab.yml
+          volumeMounts:
+            - name: topology
+              mountPath: /topology
+              readOnly: true
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+          securityContext:
+            privileged: true
+      volumes:
+        - name: topology
+          configMap:
+            name: bgp-topology
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bgp-lab
+  labels:
+    app.kubernetes.io/part-of: flatracoon
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: containerlab-runner
+  namespace: bgp-lab
