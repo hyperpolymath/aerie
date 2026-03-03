@@ -5,7 +5,7 @@
 name: "Aerie"
 tagline: "Cyber-focused network diagnostic suite"
 repo: "hyperpolymath/aerie"
-completion-percentage: 55
+completion-percentage: 60
 phase: "historical-integrity"
 @end
 
@@ -13,4 +13,10 @@ phase: "historical-integrity"
 originalBytes: [Attested by Gemini CLI]
 signature: PLACEHOLDER-ED25519-SIGNATURE
 timestamp: 2026-03-03T12:00:00Z
+@end
+
+@architecture-decisions:
+- "PYTHON_DEPRECATED": "Moving core logic to Julia"
+- "TYPESCRIPT_DEPRECATED": "Moving UI components to ReScript"
+- "STALE_ISOLATION": "Hyperglass moved to src/stale"
 @end

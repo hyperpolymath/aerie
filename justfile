@@ -29,3 +29,32 @@ specs-to-v-gql:
 	../developer-ecosystem/v-ecosystem/v-api-interfaces/v-graphql/bin/v-graphql-gen src/api/graphql/schema.graphql
 
 
+
+# --- SECURITY ---
+
+# Run security audit suite
+security:
+    @echo "=== Security Audit ==="
+    @command -v gitleaks >/dev/null && gitleaks detect --source . --verbose || echo "gitleaks not found"
+    @command -v trivy >/dev/null && trivy fs --severity HIGH,CRITICAL . || echo "trivy not found"
+    @echo "Security audit complete"
+
+# Scan for vulnerabilities in dependencies
+audit:
+    @echo "=== Dependency Audit ==="
+    @# Check Rust/Python/Node if tools exist
+    @if [ -f Cargo.toml ]; then cargo audit; fi
+    @if [ -f pyproject.toml ]; then bandit -r .; fi
+    @echo "Dependency audit complete"
+
+# --- QUALITY ---
+
+# Run all quality checks
+quality: lint tests
+
+# Run linters
+lint:
+    @echo "=== Linting ==="
+    @command -v shellcheck >/dev/null && find . -name "*.sh" -exec shellcheck {} + || echo "shellcheck not found"
+    @command -v typos >/dev/null && typos . || echo "typos not found"
+    @echo "Linting complete"
