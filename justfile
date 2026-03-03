@@ -49,8 +49,16 @@ audit:
 
 # --- QUALITY ---
 
+# Run all tests
+tests:
+    @echo "=== Running Tests ==="
+    @if [ -d qubes-sdp ] && [ -f qubes-sdp/justfile ]; then (cd qubes-sdp && just test); fi
+    @if [ -d bgp-backbone-lab ] && [ -f bgp-backbone-lab/justfile ]; then (cd bgp-backbone-lab && just test); fi
+    @echo "Tests complete"
+
 # Run all quality checks
 quality: lint tests
+
 
 # Run linters
 lint:

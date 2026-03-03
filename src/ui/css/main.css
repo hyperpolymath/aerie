@@ -1,0 +1,10 @@
+/* Aerie UI - Vanilla CSS */
+:root {
+    --bg: #0a0a0a;
+    --fg: #f0f0f0;
+}
+body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: system-ui, sans-serif;
+}
