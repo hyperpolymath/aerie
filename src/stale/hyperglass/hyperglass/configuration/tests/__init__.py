@@ -1,1 +1,0 @@
-"""hyperglass configuration tests."""
