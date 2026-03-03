@@ -1,48 +1,19 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
-# Dependabot configuration for RSR-compliant repositories
-# Covers common ecosystems - remove unused ones for your project
+# Dependabot configuration for aerie
+# Focused on actual project dependencies and noise reduction
 
 version: 2
 updates:
-  # GitHub Actions - always include
+  # GitHub Actions - grouped updates to reduce PR noise
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
     groups:
-      actions:
+      github-actions:
         patterns:
           - "*"
 
-  # Rust/Cargo
-  - package-ecosystem: "cargo"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-patch"]
-
-  # Elixir/Mix
-  - package-ecosystem: "mix"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-
-  # Node.js/npm
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-
-  # Python/pip
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-
-  # Nix flakes
-  - package-ecosystem: "nix"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+  # No other active dependency ecosystems detected in root or primary subdirectories.
+  # (v.mod, build.zig, and AI.a2ml are not currently supported by Dependabot)
