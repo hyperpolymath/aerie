@@ -1,0 +1,16 @@
+# Aerie State Manifest (A2ML)
+@state { version: "0.3.0", last-updated: "2026-03-03", status: "active" }
+
+@project-context:
+name: "Aerie"
+tagline: "Cyber-focused network diagnostic suite"
+repo: "hyperpolymath/aerie"
+completion-percentage: 55
+phase: "historical-integrity"
+@end
+
+@attestation:
+originalBytes: [Attested by Gemini CLI]
+signature: PLACEHOLDER-ED25519-SIGNATURE
+timestamp: 2026-03-03T12:00:00Z
+@end

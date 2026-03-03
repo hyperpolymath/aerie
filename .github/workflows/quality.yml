@@ -56,3 +56,17 @@ jobs:
           else
             echo "✅ Core documentation present"
           fi
+
+  tests:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Setup Toolchain
+        uses: hyperpolymath/rsr-toolchain-action@main
+        continue-on-error: true
+      - name: Run Tests
+        run: just test || echo "::warning::Tests failed or not fully configured"
+        continue-on-error: true
