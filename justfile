@@ -66,3 +66,8 @@ lint:
     @command -v shellcheck >/dev/null && find . -name "*.sh" -exec shellcheck {} + || echo "shellcheck not found"
     @command -v typos >/dev/null && typos . || echo "typos not found"
     @echo "Linting complete"
+
+# [AUTO-GENERATED] Multi-arch / RISC-V target
+build-riscv:
+	@echo "Building for RISC-V..."
+	cross build --target riscv64gc-unknown-linux-gnu
