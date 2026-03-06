@@ -13,8 +13,3 @@
 	path = qubes-sdp
 	url = git@github.com:hyperpolymath/qubes-sdp.git
 	branch = main
-
-[submodule "src/hyperglass"]
-	path = src/hyperglass
-	url = https://github.com/thatmattlove/hyperglass.git
-	branch = main
