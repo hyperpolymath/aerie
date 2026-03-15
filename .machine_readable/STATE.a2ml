@@ -1,22 +1,14 @@
-# Aerie State Manifest (A2ML)
-@state { version: "0.3.0", last-updated: "2026-03-03", status: "active" }
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# STATE.a2ml — Project state checkpoint
+# Converted from STATE.scm on 2026-03-15
 
-@project-context:
-name: "Aerie"
-tagline: "Cyber-focused network diagnostic suite"
-repo: "hyperpolymath/aerie"
-completion-percentage: 60
-phase: "historical-integrity"
-@end
+[metadata]
+project = "aerie"
+version = "0.1.0"
+last-updated = "2026-03-15"
+status = "active"
 
-@attestation:
-originalBytes: [Attested by Gemini CLI]
-signature: PLACEHOLDER-ED25519-SIGNATURE
-timestamp: 2026-03-03T12:00:00Z
-@end
-
-@architecture-decisions:
-- "PYTHON_DEPRECATED": "Moving core logic to Julia"
-- "TYPESCRIPT_DEPRECATED": "Moving UI components to ReScript"
-- "STALE_ISOLATION": "Hyperglass moved to src/stale"
-@end
+[project-context]
+name = "aerie"
+completion-percentage = 0
+phase = "In development"
