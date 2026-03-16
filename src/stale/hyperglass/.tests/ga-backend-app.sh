@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: PMPL-1.0-or-later
 
 LOG_FILE="$HOME/hyperglass-ci.log"
 touch /tmp/hyperglass.log

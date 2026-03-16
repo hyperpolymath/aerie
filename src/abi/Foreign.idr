@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
 ||| Foreign Function Interface (FFI) Declarations
 |||
 ||| This module acts as the formal bridge between Idris and the C/Zig 
