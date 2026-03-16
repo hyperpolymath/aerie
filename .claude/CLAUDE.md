@@ -23,7 +23,7 @@ for tamper-evident responses, and a policy gate for access control.
 | **Idris2** | ABI definitions, type proofs |
 | **Zig** | FFI implementation, C ABI bridge |
 | **Nickel** | K9 spec assembly |
-| **Guile Scheme** | STATE.scm, META.scm, ECOSYSTEM.scm |
+| **Guile Scheme** | .machine_readable/6a2/STATE.a2ml, .machine_readable/6a2/META.a2ml, .machine_readable/6a2/ECOSYSTEM.a2ml |
 | **Bash** | Scripts, automation |
 
 ## Build & Run
