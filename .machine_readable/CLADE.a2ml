@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Clade declaration — part of the gv-clade-index registry
+# See: https://github.com/hyperpolymath/gv-clade-index
+
+[identity]
+uuid = "94866033-010f-56eb-9b92-c9802fa8b2de"
+primary-forge = "github"
+primary-owner = "hyperpolymath"
+canonical-name = "aerie"
+prefixed-name = "dx-aerie"
+
+[clade]
+primary = "dx"
+secondary = []
+assigned = "2026-03-16"
+rationale = ""
+
+[forges]
+github = "hyperpolymath/aerie"
+gitlab = "hyperpolymath/aerie"
+bitbucket = "hyperpolymath/aerie"
+
+[lineage]
+type = "standalone"
+parent = "Development environment tool"
+born = "2026-03-16"
