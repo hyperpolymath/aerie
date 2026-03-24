@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# Stapeln selur-compose.toml — Aerie Gateway
+# V-lang Triple-Mount API Server: REST + GraphQL (:4000) and gRPC (:4001)
+
+[project]
+name = "aerie"
+
+[services.app]
+build = { context = ".", dockerfile = "Containerfile" }
+restart = "unless-stopped"
+networks = ["default"]
+ports = [
+  "4000:4000",
+  "4001:4001",
+]
+
+# Static binary on chainguard/static — no curl/wget available, use TCP check
+healthcheck = { test = "/aerie-gateway --health || exit 1", interval = "30s", timeout = "5s", start_period = "10s", retries = 3 }
+
+[services.app.labels]
+"org.opencontainers.image.title" = "Aerie Gateway"
+"org.opencontainers.image.description" = "Cyber-Focused Network Diagnostic Suite API Gateway"
+
+[networks.default]
+driver = "bridge"
