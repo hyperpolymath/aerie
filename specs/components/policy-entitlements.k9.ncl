@@ -29,18 +29,18 @@ let component_pedigree = pedigree.K9Pedigree {
 
   sources = {
     a2ml = [
-      "/var/mnt/eclipse/repos/a2ml/SPEC.adoc",
-      "/var/mnt/eclipse/repos/a2ml/SPEC.a2ml",
+      "/var$REPOS_DIR/a2ml/SPEC.adoc",
+      "/var$REPOS_DIR/a2ml/SPEC.a2ml",
     ],
     verisimdb = [
-      "/var/mnt/eclipse/repos/verisimdb/docs/vql-type-system.adoc",
-      "/var/mnt/eclipse/repos/verisimdb/docs/vql-architecture.adoc",
+      "/var$REPOS_DIR/verisimdb/docs/vql-type-system.adoc",
+      "/var$REPOS_DIR/verisimdb/docs/vql-architecture.adoc",
     ],
     svalinn = [
-      "/var/mnt/eclipse/repos/svalinn/spec/schemas/gateway-run-request.v2.json",
+      "/var$REPOS_DIR/svalinn/spec/schemas/gateway-run-request.v2.json",
     ],
     k9 = [
-      "/var/mnt/eclipse/repos/k9-svc/SPEC.adoc",
+      "/var$REPOS_DIR/k9-svc/SPEC.adoc",
     ],
   },
 
