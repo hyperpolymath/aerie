@@ -1,0 +1,22 @@
+{
+  "groove_version": "1",
+  "service_id": "aerie",
+  "service_version": "0.1.0",
+  "capabilities": {
+    "workflow": {
+      "type": "workflow",
+      "description": "Secure environment management and API gateway",
+      "protocol": "http",
+      "endpoint": "/api/environments",
+      "requires_auth": true,
+      "panel_compatible": true
+    }
+  },
+  "consumes": ["integrity", "octad-storage", "scanning"],
+  "endpoints": {
+    "health": "/health",
+    "groove": "/.well-known/groove"
+  },
+  "health": "/health",
+  "applicability": ["individual", "team"]
+}
