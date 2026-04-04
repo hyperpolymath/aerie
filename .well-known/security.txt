@@ -16,3 +16,4 @@ Canonicalization: https://yourdomain.com/.well-known/rfc8785
 # Accessibility
 Compliance: WCAG 2.3 AAA, ARIA 1.2
 Auditor: https://yourdomain.com/accessibility-statement
+Expires: 2027-12-31T23:59:59.000Z
