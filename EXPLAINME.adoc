@@ -5,37 +5,78 @@
 
 The README makes claims. This file backs them up.
 
-[quote, README]
-____
-A high-assurance alternative to commercial speedtests. CF-NDS is designed to provide network engineers with the raw data required to diagnose routing interference, BGP hijacks, or ISP throttling without the privacy risks of third-party telemetry.
-____
+== Real Claims From The README
 
-== Technology Choices
+**Claim 1: "Zero-telemetry speedtest… BGP path visibility… Jitter persistence… Hardened access with rate-limiting"** (README, Key Features section)
 
-[cols="1,2"]
-|===
-| Technology | Learn More
+Aerie integrates three network diagnostic tools behind a single V-lang gateway (port 4000):
 
-| **Zig** | https://ziglang.org
-| **Idris2 ABI** | https://www.idris-lang.org
-|===
+1. **LibreSpeed** (port 8080) — Zero-telemetry speedtest for bandwidth measurement
+2. **Hyperglass** (port 8082) — BGP looking glass for routing path analysis
+3. **SmokePing** (port 8081) — ICMP latency monitor for jitter tracking
+
+The gateway in `src/api/v/main.v` acts as a reverse proxy and access control layer. All requests are logged to Redis and wrapped in `ProofEnvelope` structures (SHA-256 hash + query ID + timestamp). The policy gate in `src/api/v/policy.v` checks X-Api-Key headers and rate-limits by key.
+
+*How it works:* The gateway reads configuration from environment variables (`LIBRESPEED_URL`, `HYPERGLASS_URL`, `REDIS_URL`). Incoming requests hit the policy gate first. If authorized, the request is forwarded to the appropriate backend service. The response is hashed and wrapped in ProofEnvelope. The full request/response is logged to Redis for audit trail. Caveat: Phase 1 (current) uses SHA-256; Phase 2+ will add Ed448 signatures for cryptographic proof. Rate limiting is per-key; there is no global circuit breaker yet.
+
+**Claim 2: "Dual passive/active forensics: Zeek/Suricata listening + Hyperglass/SmokePing/LibreSpeed probes"** (README, Key Features section)
+
+The architecture distinguishes between:
+
+* **Passive forensics** — Network packet inspection via Zeek (IDS) or Suricata (threat detection)
+* **Active forensics** — Measurement probes (LibreSpeed speedtest, SmokePing pings, Hyperglass BGP queries)
+
+The clients in `src/api/v/` are implemented as V-lang modules:
+- `librespeed_client.v` — Speed measurement wrapper
+- `smokeping_client.v` — Jitter/latency monitoring
+- `hyperglass_client.v` — BGP path lookup
+
+Each client has a corresponding resolver in `src/api/v/resolvers.v` that fields GraphQL/REST requests.
+
+*How it works:* Passive Zeek/Suricata instances listen on network interfaces and post alerts to the audit log (Redis). Active probes are on-demand: user requests trigger a new speed test or BGP query. Results are cached in Redis (TTL configurable per probe type). The frontend dashboard displays both real-time probe results and historical passive alerts. Caveat: Zeek/Suricata are not yet containerized in the compose stack (planned Phase 2); only the three primary probes are running currently.
 
 == Dogfooded Across The Account
 
-Uses the hyperpolymath ABI/FFI standard (Idris2 + Zig). Same pattern used across
-https://github.com/hyperpolymath/proven[proven],
-https://github.com/hyperpolymath/burble[burble], and
-https://github.com/hyperpolymath/gossamer[gossamer].
+Aerie uses the hyperpolymath ABI/FFI standard (Idris2 ABI + Zig FFI) for proof envelopes and cryptographic operations. This pattern is shared across:
+
+* link:https://github.com/hyperpolymath/proven[proven] — Model verification with formal proofs
+* link:https://github.com/hyperpolymath/burble[burble] — Media platform with proof-based audit logs
+* link:https://github.com/hyperpolymath/gossamer[gossamer] — Window manager with Idris2 state machines
+
+The proof envelope concept (hash + metadata) is reused in all hyperpolymath API services.
+
+== Technology Choices
+
+[cols="1,2,3"]
+|===
+| Technology | Learn More | Why
+
+| **V-lang** | https://vlang.io | API gateway, HTTP server, no-GC performance
+| **Idris2 ABI** | https://www.idris-lang.org | Formal proofs of proof envelope correctness (Phase 2+)
+| **Zig FFI** | https://ziglang.org | Cryptographic hash functions, C interop
+| **Nickel** | https://nickel-lang.org | K9 spec assembly for component definitions
+| **Podman Compose** | https://podman.io | Container orchestration, Chainguard base images
+| **Redis** | https://redis.io | Audit log, cache, real-time event stream
+|===
 
 == File Map
 
-[cols="1,2"]
+[cols="1,2,3"]
 |===
-| Path | What's There
+| Path | What's There | Key Details
 
-| `src/` | Source code
-| `ffi/` | Foreign function interface
-| `test(s)/` | Test suite
+| `src/api/v/main.v` | Gateway entry point | Triple-mount API (GraphQL, REST, gRPC), protocol config, banner
+| `src/api/v/policy.v` | Policy gate | X-Api-Key validation, rate limiting per key, request logging
+| `src/api/v/proof.v` | Proof envelope | SHA-256 hashing, ProofEnvelope struct wrapping, response signing
+| `src/api/v/librespeed_client.v` | Speed probe client | HTTP wrapper for LibreSpeed results, bandwidth metrics
+| `src/api/v/smokeping_client.v` | Jitter probe client | Latency time series, ICMP RTT collection
+| `src/api/v/hyperglass_client.v` | BGP client | AS path resolution, prefix origin validation
+| `src/api/v/redis_client.v` | Cache/audit | Audit log persistence, request/response archival
+| `src/api/v/resolvers.v` | GraphQL resolvers | Field resolvers for all three probe types
+| `src/api/graphql/schema.gql.v` | GraphQL schema | Type definitions (Speed, Jitter, BGPPath, ProofEnvelope)
+| `src/api/proto/aerie.pb.v` | Protobuf definitions | gRPC message definitions (Phase 1.1+)
+| `specs/` | K9 component specs | active-probe.adoc, alerting-retention.adoc, known-limitations.adoc
+| `docker-compose.yml` | Container stack | LibreSpeed, Hyperglass, SmokePing, Redis services
 |===
 
 == Questions?
