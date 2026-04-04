@@ -1,5 +1,7 @@
 # TEST-NEEDS.md — Aerie CRG Blitz D→C Test Suite
 
+## CRG Grade: C — ACHIEVED 2026-04-04
+
 **Project**: aerie (V-lang network diagnostic suite API)  
 **CRG Target**: C (comprehensive test coverage)  
 **Date**: 2026-04-04  
