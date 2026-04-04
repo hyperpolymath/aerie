@@ -1,14 +1,31 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # STATE.a2ml — Project state checkpoint
-# Converted from STATE.scm on 2026-03-15
+# CRG Blitz D→C: Test suite completion
 
 [metadata]
 project = "aerie"
 version = "0.1.0"
-last-updated = "2026-03-15"
+last-updated = "2026-04-04"
 status = "active"
+crg-grade = "C"
 
 [project-context]
 name = "aerie"
-completion-percentage = 0
-phase = "In development"
+completion-percentage = 40
+phase = "Phase 1: API Gateway + Test Suite"
+
+[test-coverage]
+unit-tests = 24
+property-based-tests = 8
+integration-tests = 3
+contract-tests = 6
+aspect-tests = 3
+benchmarks = 3
+total-tests = 47
+modules-covered = ["policy.v", "proof.v", "verb_governance.v"]
+
+[recent-work]
+- CRG blitz: comprehensive test suite for policy, proof, verb governance
+- Test-NEEDS.md documenting 47 test cases with security contracts
+- Module compilation verified (policy.v, proof.v both compile)
+- Ready for integration into CI/CD pipeline
