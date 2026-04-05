@@ -31,7 +31,7 @@ let component_pedigree = pedigree.K9Pedigree {
       extended_days = 365,
       justification = "Bitemporal tracing of jitter + packet loss for forensic review",
     },
-    backfill = "Arango/VQL references the same dataset via VerisimDB federation",
+    backfill = "Arango/VCL references the same dataset via VerisimDB federation",
     policy = [
       "SmokePing probes write both valid_time (probe timestamp) and tx_time (ingest time)",
       "Time-series exports feed Grafana/Kibana for anomaly overlays",

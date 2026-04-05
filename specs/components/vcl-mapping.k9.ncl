@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
-# Yard-level component: VQL mapping for GraphQL fields
+# Yard-level component: VCL mapping for GraphQL fields
 
 let pedigree = import "../k9/pedigree.ncl" in
 
 let component_pedigree = pedigree.K9Pedigree {
   metadata = {
-    name = "aerie-vql-mapping",
+    name = "aerie-vcl-mapping",
     version = "1.0.0-alpha",
-    description = "VQL mapping for GraphQL queries/subscriptions",
+    description = "VCL mapping for GraphQL queries/subscriptions",
   },
   target = {
     os = 'Linux,
@@ -27,32 +27,32 @@ let component_pedigree = pedigree.K9Pedigree {
   mapping = [
     {
       graphql = "telemetrySnapshot",
-      vql = "FROM verisim:temporal WHERE metric = 'telemetry' LIMIT 1",
+      vcl = "FROM verisim:temporal WHERE metric = 'telemetry' LIMIT 1",
       proof = "light",
     },
     {
       graphql = "routeForensicsSnapshot",
-      vql = "FROM verisim:graph WHERE target = $target PROOF strict",
+      vcl = "FROM verisim:graph WHERE target = $target PROOF strict",
       proof = "full",
     },
     {
       graphql = "auditSnapshot",
-      vql = "FROM verisim:temporal WHERE kind = 'audit' PROOF strict",
+      vcl = "FROM verisim:temporal WHERE kind = 'audit' PROOF strict",
       proof = "full",
     },
     {
       graphql = "telemetryStream",
-      vql = "SUBSCRIBE verisim:temporal WHERE metric = 'telemetry'",
+      vcl = "SUBSCRIBE verisim:temporal WHERE metric = 'telemetry'",
       proof = "light",
     },
     {
       graphql = "routeForensicsStream",
-      vql = "SUBSCRIBE verisim:graph WHERE target = $target PROOF strict",
+      vcl = "SUBSCRIBE verisim:graph WHERE target = $target PROOF strict",
       proof = "full",
     },
     {
       graphql = "auditAttestedStream",
-      vql = "SUBSCRIBE verisim:temporal WHERE kind = 'audit' PROOF strict",
+      vcl = "SUBSCRIBE verisim:temporal WHERE kind = 'audit' PROOF strict",
       proof = "full",
     },
   ],

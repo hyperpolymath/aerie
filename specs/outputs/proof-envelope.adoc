@@ -9,7 +9,7 @@
 == Overview
 
 Every response includes a proof envelope. Realtime streams use a light envelope.
-Forensics and audit use a full envelope with A2ML attestation + VQL proof.
+Forensics and audit use a full envelope with A2ML attestation + VCL proof.
 
 == Fields
 
@@ -42,5 +42,5 @@ Includes: result_hash, policy_hash, query_id, issued_at, signature
 
 == Full Envelope
 
-Includes: light fields plus A2ML attestation + VQL proof blob
+Includes: light fields plus A2ML attestation + VCL proof blob
 

@@ -8,7 +8,7 @@
 
 == Intent
 
-GraphQL is the user-facing API. VQL executes behind resolvers. Subscriptions are
+GraphQL is the user-facing API. VCL executes behind resolvers. Subscriptions are
 granular per module and carry a proof envelope on every payload.
 
 == Core Types (Outline)
@@ -114,29 +114,29 @@ type Subscription {
 }
 ----
 
-== Resolver Mapping (VQL Behind the Scenes)
+== Resolver Mapping (VCL Behind the Scenes)
 
 [cols="1,2",options="header"]
 |===
-| GraphQL Field | VQL Execution Path
+| GraphQL Field | VCL Execution Path
 
 | telemetrySnapshot
-| VQL slipstream (temporal modality) + light proof envelope
+| VCL slipstream (temporal modality) + light proof envelope
 
 | routeForensicsSnapshot
-| VQL proved query (graph modality) + full proof envelope
+| VCL proved query (graph modality) + full proof envelope
 
 | auditSnapshot
-| VQL proved query (temporal + semantic) + full proof envelope
+| VCL proved query (temporal + semantic) + full proof envelope
 
 | telemetryStream
-| VQL slipstream subscription + light proof envelope
+| VCL slipstream subscription + light proof envelope
 
 | routeForensicsStream
-| VQL proved subscription + full proof envelope
+| VCL proved subscription + full proof envelope
 
 | auditAttestedStream
-| VQL proved subscription + full proof envelope
+| VCL proved subscription + full proof envelope
 |===
 
 == Subscription Model

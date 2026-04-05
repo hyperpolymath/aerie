@@ -32,9 +32,9 @@ let component_pedigree = pedigree.K9Pedigree {
       "/var$REPOS_DIR/a2ml/SPEC.adoc",
       "/var$REPOS_DIR/a2ml/SPEC.a2ml",
     ],
-    verisimdb = [
-      "/var$REPOS_DIR/verisimdb/docs/vql-type-system.adoc",
-      "/var$REPOS_DIR/verisimdb/docs/vql-architecture.adoc",
+    verisim = [
+      "/var$REPOS_DIR/verisim/docs/vcl-type-system.adoc",
+      "/var$REPOS_DIR/verisim/docs/vcl-architecture.adoc",
     ],
     svalinn = [
       "/var$REPOS_DIR/svalinn/spec/schemas/gateway-run-request.v2.json",

@@ -20,7 +20,7 @@ These components are intentionally built from upstream sources. We keep paths
 explicit so the provenance is clear and auditable.
 
 * A2ML specs: `/var$REPOS_DIR/a2ml/`
-* VeriSimDB VQL + federation docs: `/var$REPOS_DIR/verisimdb/docs/`
+* VeriSimDB VCL + federation docs: `/var$REPOS_DIR/verisim/docs/`
 * Svalinn schemas (run v2): `/var$REPOS_DIR/svalinn/spec/schemas/`
 * K9 SVC contracts: `/var$REPOS_DIR/k9-svc/`
 

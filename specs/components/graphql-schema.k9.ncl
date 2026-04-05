@@ -57,38 +57,38 @@ let component_pedigree = pedigree.K9Pedigree {
     resolver_mapping = [
       {
         field = "telemetrySnapshot",
-        vql = "slipstream temporal",
+        vcl = "slipstream temporal",
         proof = "light",
       },
       {
         field = "routeForensicsSnapshot",
-        vql = "proved graph",
+        vcl = "proved graph",
         proof = "full",
       },
       {
         field = "auditSnapshot",
-        vql = "proved temporal+semantic",
+        vcl = "proved temporal+semantic",
         proof = "full",
       },
       {
         field = "telemetryStream",
-        vql = "slipstream subscription",
+        vcl = "slipstream subscription",
         proof = "light",
       },
       {
         field = "routeForensicsStream",
-        vql = "proved subscription",
+        vcl = "proved subscription",
         proof = "full",
       },
       {
         field = "auditAttestedStream",
-        vql = "proved subscription",
+        vcl = "proved subscription",
         proof = "full",
       },
     ],
 
     notes = [
-      "GraphQL is the user-facing API; VQL executes behind resolvers.",
+      "GraphQL is the user-facing API; VCL executes behind resolvers.",
       "Subscriptions are real-time via WebSockets/SSE (not RTSP).",
       "Slipstream path for realtime; full proofs for audit/forensics.",
     ],

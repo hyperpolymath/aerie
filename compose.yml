@@ -24,7 +24,7 @@ services:
       - LIBRESPEED_URL=http://librespeed:80
       - HYPERGLASS_URL=http://hyperglass:80
       - SMOKEPING_URL=http://smokeping:80
-      - VERISIMDB_URL=http://verisimdb:8084
+      - VERISIMDB_URL=http://verisim:8084
       # Protocol toggles — set to "false" to disable and close the socket.
       # Disabled protocols have zero attack surface (no port bound).
       - ENABLE_REST=true
@@ -35,7 +35,7 @@ services:
       - smokeping
       - redis
       - hyperglass
-      - verisimdb
+      - verisim
     networks:
       - aerie-net
     restart: unless-stopped
@@ -98,14 +98,14 @@ services:
     security_opt:
       - label=disable
 
-  verisimdb:
-    image: docker.io/hyperpolymath/verisimdb:latest
-    container_name: aerie-verisimdb
+  verisim:
+    image: docker.io/hyperpolymath/verisim:latest
+    container_name: aerie-verisim
     # No host port — only reachable via aerie-net (gateway proxies all access).
     # VerisimDB provides bitemporal audit storage for forensic analysis.
     # Redis remains the hot cache; VerisimDB is the permanent cold store.
     volumes:
-      - verisimdb-data:/data
+      - verisim-data:/data
     environment:
       - VERISIMDB_HOST=0.0.0.0
       - VERISIMDB_PORT=8084
@@ -128,5 +128,5 @@ volumes:
     name: aerie-hyperglass-config
   redis-data:
     name: aerie-redis-data
-  verisimdb-data:
-    name: aerie-verisimdb-data
+  verisim-data:
+    name: aerie-verisim-data

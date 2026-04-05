@@ -119,7 +119,7 @@ FORENSICS HUD
   Zeek/Suricata (Passive)           ████░░░░░░  40%    Initial tap points configured
 
 DATA PLANE
-  VerisimDB (Federation)            ██████░░░░  60%    VQL implementation ongoing
+  VerisimDB (Federation)            ██████░░░░  60%    VCL implementation ongoing
   ArangoDB (Graph Forensics)        ████████░░  80%    Schema stable
   Redis (Realtime Cache + Audit)    ██████████ 100%    RESP client, cache TTL, audit log
   Virtuoso (Semantic XML)           ████░░░░░░  40%    SPARQL 1.2 integration

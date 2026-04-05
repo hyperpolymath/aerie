@@ -8,7 +8,7 @@ let bitemporal = import "components/bitemporal-store.k9.ncl" in
 let transport = import "components/subscription-transport.k9.ncl" in
 let gate = import "components/resolver-policy-gate.k9.ncl" in
 let auth = import "components/subscription-auth-flow.k9.ncl" in
-let vql = import "components/vql-mapping.k9.ncl" in
+let vcl = import "components/vcl-mapping.k9.ncl" in
 let osi = import "components/osi-forensics-matrix.k9.ncl" in
 let collector = import "components/passive-collector.k9.ncl" in
 let hud = import "components/hud-module-mapping.k9.ncl" in
@@ -26,7 +26,7 @@ let limitations = import "components/known-limitations.k9.ncl" in
     transport = transport,
     gate = gate,
     auth = auth,
-    vql = vql,
+    vcl = vcl,
     osi = osi,
     collector = collector,
     hud = hud,
@@ -44,7 +44,7 @@ let limitations = import "components/known-limitations.k9.ncl" in
     "outputs/subscription-transport.adoc",
     "outputs/resolver-policy-gate.adoc",
     "outputs/subscription-auth-flow.adoc",
-    "outputs/vql-mapping.adoc",
+    "outputs/vcl-mapping.adoc",
     "outputs/osi-forensics-matrix.adoc",
     "outputs/passive-collector.adoc",
     "outputs/hud-module-mapping.adoc",
