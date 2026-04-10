@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# aerie.launcher.a2ml — per-app launcher config for Aerie.
+# Consumed by `launch-scaffolder mint aerie.launcher.a2ml`.
+
+[project]
+name         = "aerie"
+display      = "Aerie"
+description  = "Aerie Network Diagnostic Suite"
+categories   = ["Network", "System", "Utility"]
+version      = "1.0.0"
+license      = "PMPL-1.0-or-later"
+
+[repo]
+path = "/var/mnt/eclipse/repos/aerie"
+
+[runtime]
+kind    = "process"
+command = [
+    "/home/hyper/Desktop/Repo-Projects/launchers/repo-quicklaunch.sh",
+    "/var/mnt/eclipse/repos/aerie",
+    "Aerie",
+    "just",
+    "tour",
+]
+pid-file = "/tmp/aerie.pid"
+log-file = "/tmp/aerie.log"
+
+[icon]
+source = "{repo-dir}/assets/icon-256.png"
