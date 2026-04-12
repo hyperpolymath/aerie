@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# (MPL-2.0 is automatic legal fallback until PMPL is formally recognised)
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# Aerie Rust workspace
+# Members:
+#   src/api/rust  — triple-mount API gateway (V-lang rewrite, 2026-04-12)
+
+[workspace]
+members = [
+    "src/api/rust",
+]
+resolver = "2"

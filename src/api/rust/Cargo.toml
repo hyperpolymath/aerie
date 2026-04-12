@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# (MPL-2.0 is automatic legal fallback until PMPL is formally recognised)
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# aerie-api — Rust rewrite of the triple-mount API gateway (Rust/SPARK)
+# Replaces: src/api/v/ (deprecated 2026-04-12, estate-wide V-lang ban)
+#
+# Stack: axum 0.7 (HTTP), raw TCP (gRPC Phase 1), reqwest (backends),
+#        sha2 (proof hashes), uuid (query IDs), rand (timing jitter),
+#        serde_json (serialisation), tokio (async runtime)
+
+[package]
+name        = "aerie-api"
+version     = "0.2.0"
+edition     = "2021"
+description = "Aerie Network Diagnostic Suite — triple-mount API gateway (Rust rewrite)"
+license     = "MPL-2.0"
+# PMPL-1.0-or-later preferred; MPL-2.0 required for crates.io
+authors     = ["Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"]
+
+[[bin]]
+name = "aerie-api"
+path = "src/main.rs"
+
+[dependencies]
+# HTTP server — REST + GraphQL endpoints
+axum         = { version = "0.7", features = ["macros"] }
+# Async runtime — full feature set (IO, time, signal)
+tokio        = { version = "1", features = ["full"] }
+# HTTP client — backend calls to LibreSpeed, Hyperglass, SmokePing, VerisimDB
+reqwest      = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# Serialisation
+serde        = { version = "1", features = ["derive"] }
+serde_json   = "1"
+# Proof envelope — SHA-256 of response body + policy string
+sha2         = "0.10"
+hex          = "0.4"
+# UUID v4 for query IDs in ProofEnvelope
+uuid         = { version = "1", features = ["v4"] }
+# Timestamps — RFC 3339 issued_at fields
+chrono       = { version = "0.4", default-features = false, features = ["clock"] }
+# Timing jitter (1–8 ms) in verb governance to defeat timing analysis
+rand         = "0.8"
+# Tower middleware layer compatibility
+tower        = "0.4"
+tower-http   = { version = "0.5", features = ["trace"] }
+# Structured logging
+tracing             = "0.1"
+tracing-subscriber  = { version = "0.3", features = ["env-filter"] }

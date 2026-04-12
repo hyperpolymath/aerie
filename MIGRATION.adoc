@@ -1,0 +1,90 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= Aerie — V-lang Deprecated (2026-04-12)
+:toc:
+
+== Status
+
+The V-lang implementation in `src/api/v/` is *deprecated* as of 2026-04-12
+following the estate-wide V-lang ban (2026-04-10).
+
+== Migration Target: Rust
+
+The canonical Rust rewrite is at `src/api/rust/` in this directory.
+
+[source,toml]
+----
+# aerie/Cargo.toml workspace already includes this crate:
+# "src/api/rust"
+----
+
+=== Module Map
+
+[cols="1,1"]
+|===
+| V module (deprecated) | Rust module
+
+| `src/api/v/main.v`              | `src/api/rust/src/main.rs`
+| `src/api/v/policy.v`            | `src/api/rust/src/policy.rs`
+| `src/api/v/proof.v`             | `src/api/rust/src/proof.rs`
+| `src/api/v/redis_client.v`      | `src/api/rust/src/redis_client.rs`
+| `src/api/v/verb_governance.v`   | `src/api/rust/src/verb_governance.rs`
+| `src/api/v/resolvers.v`         | `src/api/rust/src/resolvers.rs`
+| `src/api/v/librespeed_client.v` | `src/api/rust/src/backends.rs` (LibreSpeedClient)
+| `src/api/v/hyperglass_client.v` | `src/api/rust/src/backends.rs` (HyperglassClient)
+| `src/api/v/smokeping_client.v`  | `src/api/rust/src/backends.rs` (SmokePingClient)
+| `src/api/v/verisim_client.v`    | `src/api/rust/src/backends.rs` (VerisimDbClient)
+|===
+
+== Build and Run
+
+[source,bash]
+----
+# From aerie/ root
+cargo build -p aerie-api
+cargo test  -p aerie-api
+
+# Run (all mounts enabled, default ports)
+./target/debug/aerie-api
+
+# Disable gRPC mount
+ENABLE_GRPC=false ./target/debug/aerie-api
+
+# Custom ports
+AERIE_PORT=8080 AERIE_GRPC_PORT=8081 ./target/debug/aerie-api
+
+# Configure backends
+LIBRESPEED_URL=http://localhost:8888  \
+HYPERGLASS_URL=http://localhost:8001  \
+SMOKEPING_URL=http://localhost:8080   \
+REDIS_URL=redis://localhost:6379      \
+VERISIMDB_URL=http://localhost:8084   \
+./target/debug/aerie-api
+----
+
+== Feature Parity
+
+All V features are preserved:
+
+* Triple-mount: REST (port 4000) + GraphQL (port 4000) + gRPC Phase 1 (port 4001)
+* Mount flags: `ENABLE_REST`, `ENABLE_GRAPHQL`, `ENABLE_GRPC` (all default true)
+* Five resolvers: `telemetry`, `route_forensics`, `smokeping`, `audit`, `temporal_audit`
+* GraphQL dispatcher routes to the same resolver set (root field detection)
+* Phase 1 policy gate: validates `X-Api-Key` format (≥16 chars, alphanumeric + hyphen)
+* ProofEnvelope wraps all responses: SHA-256 result hash, policy hash, UUID v4 query_id,
+  RFC 3339 issued_at, `proof_type: "light"`, empty signature placeholder (Phase 2: Ed25519)
+* Redis hot cache: 30 s TTL, `GET/SET` per resolver, `LPUSH/LTRIM` audit list (≤10 000),
+  `XADD` to `aerie:audit:stream` for Observatory
+* VerisimDB cold store: fire-and-forget `POST /api/v1/events`, as-of / range / history queries
+* Verb governance: explicit HTTP-verb allowlist per route prefix, stealth 404 (not 405),
+  1–8 ms random timing jitter on all responses
+* gRPC Phase 1: raw TCP, 4-byte big-endian length prefix + JSON body, per-connection goroutine
+
+== Next Steps
+
+. Build and smoke-test: `cargo build -p aerie-api && cargo test -p aerie-api`
+. Start backends (Redis, LibreSpeed, Hyperglass, SmokePing, VerisimDB) and run
+  `./target/debug/aerie-api` against the container network.
+. Verify `GET /health`, `GET /api/v1/telemetry`, and `POST /api/v1/graphql` against a valid key.
+. Once confirmed healthy, delete `src/api/v/*.v`, `v.mod`, and `vpkg.json` (if present).
+. Wire `aerie-api` binary into `compose.yml` to replace the V container.
