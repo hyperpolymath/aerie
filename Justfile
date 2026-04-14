@@ -1,5 +1,7 @@
 # Aerie task shortcuts
 
+import? "contractile.just"
+
 specs:
 	@./specs/tools/update_manifest.sh
 

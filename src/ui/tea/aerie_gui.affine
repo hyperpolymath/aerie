@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Aerie GUI — AffineScript TEA Interface
+// Underpinned by Cadre Router (Affine Stack Implementation)
+//
+// Purpose: Provide a formally verified, resource-safe interface for the
+// Aerie Network Diagnostics tools (Speedtest, BGP, Jitter).
+//
+// Nature: AffineScript TEA loop where Model and Msg are consumed linearly
+// to ensure state transition integrity.
+
+// ── Diagnostic Tools ───────────────────────────────────────────────────────
+
+enum DiagnosticTool {
+  Dashboard,
+  Speedtest,
+  BGP,
+  Jitter
+}
+
+// ── Model ───────────────────────────────────────────────────────────────────
+
+/**
+ * Aerie GUI Model.
+ * history_depth tracks the navigation stack size.
+ */
+struct Model {
+  current_tool: DiagnosticTool,
+  history_depth: Int
+}
+
+// ── Msg ──────────────────────────────────────────────────────────────────────
+
+enum Msg {
+  Navigate(DiagnosticTool),
+  PopState
+}
+
+// ── TEA Logic ────────────────────────────────────────────────────────────────
+
+/**
+ * Initial state: Dashboard with no history.
+ */
+fn aerie_init() -> Model {
+  {
+    current_tool: DiagnosticTool::Dashboard,
+    history_depth: 0
+  }
+}
+
+/**
+ * Affine TEA Update function.
+ * @linear annotations enforce that every state transition is accounted for.
+ * Underpinned by Cadre Router: navigation pushes current to stack.
+ */
+fn aerie_update(@linear msg: Msg, @linear model: Model) -> Model {
+  match model {
+    { current_tool: c, history_depth: h } => {
+      match msg {
+        Navigate(new_tool) => {
+          // Consume old model, produce new model with incremented history depth
+          { 
+            current_tool: new_tool, 
+            history_depth: h + 1 
+          }
+        }
+        
+        PopState => {
+          if h > 0 {
+            // Return to Dashboard if stack has items
+            { 
+              current_tool: DiagnosticTool::Dashboard, 
+              history_depth: h - 1 
+            }
+          } else {
+            // No-op transition: return model as-is
+            { 
+              current_tool: c, 
+              history_depth: 0 
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * View function: Renders the current tool name.
+ * Owned model prevents codegen errors with refs.
+ */
+fn aerie_view(model: Model) -> String {
+  match model.current_tool {
+    Dashboard => "AERIE DASHBOARD",
+    Speedtest => "LIBRESPEED (Bandwidth)",
+    BGP       => "HYPERGLASS (BGP Looking Glass)",
+    Jitter    => "SMOKEPING (Latency/Jitter)"
+  }
+}
+
+/**
+ * Subscriptions function.
+ */
+fn aerie_subs(model: Model) -> String {
+  "None"
+}

@@ -2,11 +2,79 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Aerie UI</title>
-    <link rel="stylesheet" href="css/main.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aerie CF-NDS</title>
+    <style>
+        body {
+            font-family: monospace;
+            background-color: #111;
+            color: #0f0;
+            padding: 20px;
+        }
+        #app {
+            white-space: pre-wrap;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #333;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-right: 5px;
+            font-family: monospace;
+        }
+        button:hover {
+            background-color: #0f0;
+            color: #111;
+        }
+    </style>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="module" src="src/Main.res.mjs"></script>
+    <div id="app">Loading Aerie...</div>
+    <div id="controls">
+        <button id="btn-dashboard">Dashboard</button>
+        <button id="btn-speedtest">Speedtest</button>
+        <button id="btn-bgp">BGP</button>
+        <button id="btn-jitter">Jitter</button>
+        <button id="btn-back">Back</button>
+    </div>
+
+    <script type="module">
+        import { load, Msg, DiagnosticTool } from '../tea/aerie_tea.js';
+
+        async function main() {
+            try {
+                const tea = await load('./assets/wasm/aerie_gui.wasm');
+                
+                // Keep track of the model pointers
+                let currentModel = tea.init();
+                
+                const appDiv = document.getElementById('app');
+                
+                function render() {
+                    appDiv.textContent = tea.view(currentModel);
+                }
+
+                function dispatch(msg) {
+                    currentModel = tea.update(msg, currentModel);
+                    render();
+                }
+
+                document.getElementById('btn-dashboard').addEventListener('click', () => dispatch(Msg.Navigate(DiagnosticTool.Dashboard)));
+                document.getElementById('btn-speedtest').addEventListener('click', () => dispatch(Msg.Navigate(DiagnosticTool.Speedtest)));
+                document.getElementById('btn-bgp').addEventListener('click', () => dispatch(Msg.Navigate(DiagnosticTool.BGP)));
+                document.getElementById('btn-jitter').addEventListener('click', () => dispatch(Msg.Navigate(DiagnosticTool.Jitter)));
+                document.getElementById('btn-back').addEventListener('click', () => dispatch(Msg.PopState()));
+
+                render();
+            } catch (err) {
+                console.error("Failed to load Wasm:", err);
+                document.getElementById('app').textContent = "Failed to load: " + err.message;
+            }
+        }
+
+        main();
+    </script>
 </body>
 </html>
