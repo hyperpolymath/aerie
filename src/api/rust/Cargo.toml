@@ -40,7 +40,7 @@ uuid         = { version = "1", features = ["v4"] }
 # Timestamps — RFC 3339 issued_at fields
 chrono       = { version = "0.4", default-features = false, features = ["clock"] }
 # Timing jitter (1–8 ms) in verb governance to defeat timing analysis
-rand         = "0.8"
+rand         = "0.10"
 # Tower middleware layer compatibility
 tower        = "0.4"
 tower-http   = { version = "0.5", features = ["trace"] }
