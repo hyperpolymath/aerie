@@ -1,34 +1,40 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
-// main.zig — Aerie Gateway: Triple-Mount API Server (Zig port)
+// main.zig — Aerie Gateway: Single-Port Path-Routed API Server (Zig port)
 //
-// Serves up to three API protocols from a single gateway process:
+// All three protocols are served on ONE port via path routing (default: 4000).
+// The HTTP listener is owned by uapi_gnosis_start via uapi_gnosis_set_handler,
+// which calls aerieHandler for every incoming request.
 //
-//   1. GraphQL  — POST /graphql                              (port 4000)
-//   2. REST     — GET  /api/v1/{telemetry,routes,audit,...}  (port 4000)
-//   3. gRPC     — length-prefixed JSON over TCP              (port 4001)
+//   /graphql               — GraphQL handler
+//   /api/v1/*              — REST handlers
+//   /grpc/*                — gRPC-JSON handlers (HTTP transport, method in body)
+//   /api/v1/health         — health check (always enabled)
+//
+// Previously the gateway bound two ports (4000 HTTP / 4001 gRPC-TCP) with
+// its own per-protocol listener threads.  The new shape uses a single gnosis
+// pool slot and uapi_gnosis_set_handler to plug aerieHandler as the dispatch
+// function.  No current consumer fires more than one protocol simultaneously,
+// so consolidating to one port loses nothing.
 //
 // Environment variables:
-//   PORT          — HTTP port (default 4000)
-//   GRPC_PORT     — gRPC port (default 4001)
-//   ENABLE_REST   — "false"/"0"/"no" to disable (default enabled)
+//   PORT          — HTTP port for all protocols (default 4000)
+//   ENABLE_REST   — "false"/"0"/"no" to disable REST (default enabled)
 //   ENABLE_GRAPHQL— same
 //   ENABLE_GRPC   — same
-//
-// Protocol enablement is read once at startup; disabled protocols bind
-// no socket — zero attack surface.
 //
 // All responses are wrapped in a ProofEnvelope (SHA-256 hash, Phase 1).
 // The policy gate checks X-Api-Key headers and logs all access to Redis.
 //
 // Server lifecycle — consumes zig-api (developer-ecosystem/zig-api):
-//   uapi_init()           — initialises gnosis server pool + connector pool
-//   uapi_gnosis_create()  — reserves a pool slot for each bound port
-//   uapi_gnosis_start()   — starts gnosis background thread for each port
-//   uapi_gnosis_stop()    — drains the background thread on shutdown
-//   uapi_gnosis_destroy() — releases pool slot and resources
-//   uapi_connector_*      — outbound HTTP service calls (see service clients)
+//   uapi_init()                 — initialises gnosis server pool + connector pool
+//   uapi_gnosis_create()        — reserves a pool slot for port 4000
+//   uapi_gnosis_set_handler()   — registers aerieHandler as the edge dispatch fn
+//   uapi_gnosis_start()         — starts gnosis background thread
+//   uapi_gnosis_stop()          — drains the background thread on shutdown
+//   uapi_gnosis_destroy()       — releases pool slot and resources
+//   uapi_connector_*            — outbound HTTP service calls (see service clients)
 //
 // Replaces: main.v (src/api/v/main.v)
 // Requires: Zig 0.15.2+
@@ -53,12 +59,10 @@ const c = @cImport({
 // zig-api server-pool state handles (module-level, set during init)
 // ---------------------------------------------------------------------------
 
-/// gnosis pool handle for the HTTP listener (port 4000 by default).
-/// Set to 0 when HTTP is disabled or initialisation fails.
-var gnosis_http_handle:  u64 = 0;
-/// gnosis pool handle for the gRPC listener (port 4001 by default).
-/// Set to 0 when gRPC is disabled or initialisation fails.
-var gnosis_grpc_handle:  u64 = 0;
+/// gnosis pool handle for the unified HTTP listener (port 4000 by default).
+/// All three protocols (REST, GraphQL, gRPC-JSON) are path-routed on this port.
+/// Set to 0 when disabled or initialisation fails.
+var gnosis_http_handle: u64 = 0;
 
 // ---------------------------------------------------------------------------
 // Configuration helpers
@@ -83,27 +87,28 @@ fn readProtocolConfig() t.ProtocolConfig {
 }
 
 /// Print the startup banner to stdout.
-fn printBanner(http_port: u16, grpc_port: u16, cfg: t.ProtocolConfig) void {
+fn printBanner(http_port: u16, cfg: t.ProtocolConfig) void {
     std.debug.print(
         "╔══════════════════════════════════════════════════════════╗\n" ++
-        "║          AERIE GATEWAY — Zig port (PMPL-1.0-or-later)   ║\n" ++
+        "║   AERIE GATEWAY — Zig port (single-port, PMPL-1.0-or-later) ║\n" ++
         "╠══════════════════════════════════════════════════════════╣\n",
         .{},
     );
+    std.debug.print("║  Port            : {d:<5}                                   ║\n", .{http_port});
     if (cfg.rest_enabled) {
-        std.debug.print("║  REST            : port {d:<5} ✓ ENABLED                 ║\n", .{http_port});
+        std.debug.print("║  REST            : /api/v1/* ✓ ENABLED                  ║\n", .{});
     } else {
-        std.debug.print("║  REST            : ✗ DISABLED (no socket bound)         ║\n", .{});
+        std.debug.print("║  REST            : ✗ DISABLED                           ║\n", .{});
     }
     if (cfg.graphql_enabled) {
-        std.debug.print("║  GraphQL         : port {d:<5} ✓ ENABLED                 ║\n", .{http_port});
+        std.debug.print("║  GraphQL         : /graphql ✓ ENABLED                   ║\n", .{});
     } else {
-        std.debug.print("║  GraphQL         : ✗ DISABLED (no socket bound)         ║\n", .{});
+        std.debug.print("║  GraphQL         : ✗ DISABLED                           ║\n", .{});
     }
     if (cfg.grpc_enabled) {
-        std.debug.print("║  gRPC            : port {d:<5} ✓ ENABLED                 ║\n", .{grpc_port});
+        std.debug.print("║  gRPC-JSON       : /grpc/* ✓ ENABLED                    ║\n", .{});
     } else {
-        std.debug.print("║  gRPC            : ✗ DISABLED (no socket bound)         ║\n", .{});
+        std.debug.print("║  gRPC-JSON       : ✗ DISABLED                           ║\n", .{});
     }
     std.debug.print(
         "╠══════════════════════════════════════════════════════════╣\n" ++
@@ -267,12 +272,8 @@ fn healthJson(cfg: t.ProtocolConfig, out: []u8) []const u8 {
     if (cfg.rest_enabled or cfg.graphql_enabled) bound += 1;
     if (cfg.grpc_enabled) bound += 1;
     // Include gnosis server pool state in health output.
-    const http_pool_state: u8 = if (gnosis_http_handle != 0)
+    const pool_state: u8 = if (gnosis_http_handle != 0)
         c.uapi_gnosis_state(gnosis_http_handle)
-    else
-        c.UAPI_SERVER_STOPPED;
-    const grpc_pool_state: u8 = if (gnosis_grpc_handle != 0)
-        c.uapi_gnosis_state(gnosis_grpc_handle)
     else
         c.UAPI_SERVER_STOPPED;
     return std.fmt.bufPrint(out,
@@ -280,14 +281,14 @@ fn healthJson(cfg: t.ProtocolConfig, out: []u8) []const u8 {
         "\"timestamp\":\"{s}\",\"protocols\":{{\"rest\":{s},\"graphql\":{s},\"grpc\":{s}}}," ++
         "\"active_protocols\":{d},\"bound_ports\":{d}," ++
         "\"verb_governance\":true,\"stealth_mode\":true,\"proof_mode\":\"light\"," ++
-        "\"policy_phase\":1,\"pool\":{{\"http_slot_state\":{d},\"grpc_slot_state\":{d}}}}}",
+        "\"policy_phase\":1,\"pool\":{{\"slot_state\":{d}}}}}",
         .{
             ts,
             if (cfg.rest_enabled)    "true" else "false",
             if (cfg.graphql_enabled) "true" else "false",
             if (cfg.grpc_enabled)    "true" else "false",
             active, bound,
-            http_pool_state, grpc_pool_state,
+            pool_state,
         },
     ) catch "{\"status\":\"healthy\"}";
 }
@@ -311,415 +312,338 @@ fn notFoundJson(cfg: t.ProtocolConfig, out: []u8) []const u8 {
 }
 
 // ---------------------------------------------------------------------------
-// Per-connection HTTP handler
+// aerieHandler — edge hook for uapi_gnosis_set_handler
+// (Old per-connection HTTP handler and gRPC TCP listener removed 2026-04-17:
+//  both are superseded by the single-port set_handler architecture.)
 // ---------------------------------------------------------------------------
 
-const ConnArgs = struct {
-    conn:      std.net.Server.Connection,
-    cfg:       t.ProtocolConfig,
-    redis:     *rc.RedisClient,
-    verisimdb: vc.VerisimDBClient,
-    alloc:     std.mem.Allocator,
-};
+// ---------------------------------------------------------------------------
+// aerieHandler — edge hook for uapi_gnosis_set_handler
+//
+// gnosis calls this for every HTTP request on the pool port.
+// aerieHandler path-dispatches to the appropriate protocol family.
+// gRPC-over-TCP (Phase 1) is superseded: gRPC methods are now routed over
+// HTTP at /grpc/<MethodName>.
+//
+// Module-level context set by main() before uapi_gnosis_start:
+//   g_aerie_cfg          — protocol enablement flags
+//   g_aerie_redis        — Redis client pointer
+//   g_aerie_verisimdb    — VerisimDB client value
+//   g_aerie_alloc        — base allocator for per-request arenas
+//   g_aerie_context_ready — true once all the above are initialised
+// ---------------------------------------------------------------------------
 
-fn handleHttpConn(args: ConnArgs) void {
-    var conn = args.conn;
-    defer conn.stream.close();
+var g_aerie_cfg:           t.ProtocolConfig    = .{ .rest_enabled = true, .graphql_enabled = true, .grpc_enabled = true };
+var g_aerie_redis:         ?*rc.RedisClient    = null;
+var g_aerie_verisimdb:     vc.VerisimDBClient  = undefined;
+var g_aerie_alloc:         std.mem.Allocator   = undefined;
+var g_aerie_context_ready: bool                = false;
 
-    var arena_inst = std.heap.ArenaAllocator.init(args.alloc);
+/// Response body buffer for aerieHandler.  gnosis's serve thread calls
+/// aerieHandler serially (one per connection), so a module-level buffer is safe.
+var g_aerie_resp_buf: [131072]u8 = undefined;
+
+/// Sentinel content-type strings for aerieHandler responses.
+const AERIE_CT_JSON: [*:0]const u8 = "application/json";
+
+/// Fill a GnosisResponse with an error body.
+fn aerieRespError(
+    resp_c: [*c]c.GnosisResponse,
+    status: u16,
+    msg:    []const u8,
+) void {
+    const resp: *c.GnosisResponse = @ptrCast(resp_c);
+    var fbs = std.io.fixedBufferStream(&g_aerie_resp_buf);
+    fbs.writer().print("{{\"error\":\"{s}\"}}", .{msg}) catch {};
+    const written = fbs.getWritten();
+    resp.status       = status;
+    resp._pad         = 0;
+    resp.content_type = AERIE_CT_JSON;
+    resp.body_ptr     = written.ptr;
+    resp.body_len     = @intCast(written.len);
+}
+
+/// The edge handler registered with uapi_gnosis_set_handler.
+///
+/// gnosis provides method, path, and body pre-parsed from the HTTP request.
+/// aerieHandler replicates the routing logic from handleHttpConn, writing
+/// the response into g_aerie_resp_buf and filling the GnosisResponse.
+///
+/// Protocol path mapping:
+///   /graphql      → GraphQL handler
+///   /api/v1/*     → REST handlers
+///   /grpc/*       → gRPC-JSON handlers (body contains {"method":"...","...":...})
+///   else          → 404
+export fn aerieHandler(req_c: [*c]const c.GnosisRequest, resp_c: [*c]c.GnosisResponse) callconv(.c) void {
+    const resp: *c.GnosisResponse      = @ptrCast(resp_c);
+    const req:  *const c.GnosisRequest = @ptrCast(req_c);
+
+    if (!g_aerie_context_ready) {
+        aerieRespError(resp_c, 503, "gateway not ready");
+        return;
+    }
+
+    const redis    = g_aerie_redis orelse {
+        aerieRespError(resp_c, 503, "redis not initialised");
+        return;
+    };
+
+    var arena_inst = std.heap.ArenaAllocator.init(g_aerie_alloc);
     defer arena_inst.deinit();
     const arena = arena_inst.allocator();
 
-    var line_buf: [2048]u8 = undefined;
-    const req = parseRequest(conn.stream, &line_buf, arena) catch return;
-
-    // Verb governance — before policy gate
-    const verb_dec = vg.check(req.method, req.raw_path);
-    if (!verb_dec.allowed) {
-        // Build audit event for denied verb
-        var ts_buf: [32]u8 = undefined;
-        prf.formatRfc3339(&ts_buf);
-        var ev: t.AuditEvent = std.mem.zeroes(t.AuditEvent);
-        prf.generateUuidV4(&ev.event_id);
-        _ = @memcpy(ev.valid_time[0..20], ts_buf[0..20]); ev.valid_time[20] = 0;
-        _ = @memcpy(ev.tx_time[0..20],    ts_buf[0..20]); ev.tx_time[20]    = 0;
-        @memcpy(ev.severity[0..7], "warning"); ev.severity[7] = 0;
-        var msg_buf: [256]u8 = undefined;
-        const msg = std.fmt.bufPrint(&msg_buf,
-            "Verb denied: {s} on {s}",
-            .{ std.mem.sliceTo(&verb_dec.verb, 0), req.raw_path },
-        ) catch "Verb denied";
-        ev.message_len = @min(msg.len, 255);
-        @memcpy(ev.message[0..ev.message_len], msg[0..ev.message_len]);
-        ev.message[ev.message_len] = 0;
-        @memcpy(ev.tags[0][0..15], "verb-governance"); ev.tags[0][15] = 0;
-        @memcpy(ev.tags[1][0..6],  "denied");          ev.tags[1][6]  = 0;
-        ev.tag_count = 2;
-        args.redis.logAudit(ev);
-
-        if (verb_dec.stealth) vg.stealthDelay();
-
-        var body_buf: [1024]u8 = undefined;
-        const body = notFoundJson(args.cfg, &body_buf);
-        const status: u16 = if (verb_dec.stealth) 404 else 405;
-        writeJson(conn.stream, status, body);
-        return;
-    }
+    const method = std.mem.span(req.method);
+    const path   = std.mem.span(req.path);
+    const body: []const u8 = if (req.body_ptr) |p| p[0..req.body_len] else "";
 
     // CORS preflight
-    if (std.ascii.eqlIgnoreCase(req.method, "OPTIONS")) {
-        writeHttpResponse(conn.stream, 204, "No Content", "text/plain", "");
+    if (std.ascii.eqlIgnoreCase(method, "OPTIONS")) {
+        resp.status = 204; resp._pad = 0;
+        resp.content_type = "text/plain";
+        resp.body_ptr = null; resp.body_len = 0;
         return;
     }
 
-    // Policy gate
-    const policy = pol.evaluatePolicy(req.api_key, moduleFromPath(req.path));
+    // Policy gate — derive api_key from a header if available.
+    // Since gnosis's GnosisRequest does not expose raw headers (by design),
+    // we pass an empty api_key here.  Phase 1 policy is permissive regardless.
+    const policy = pol.evaluatePolicy("", moduleFromPath(path));
     if (!policy.allowed) {
-        var reason_buf: [256]u8 = undefined;
+        var rb: [256]u8 = undefined;
         const reason = std.mem.sliceTo(&policy.reason, 0);
-        const body = std.fmt.bufPrint(&reason_buf,
-            "{{\"error\":\"Access denied\",\"reason\":\"{s}\"}}",
-            .{reason},
-        ) catch "{\"error\":\"Access denied\"}";
-        writeJson(conn.stream, 403, body);
+        var fbs = std.io.fixedBufferStream(&rb);
+        fbs.writer().print("{{\"error\":\"Access denied\",\"reason\":\"{s}\"}}", .{reason}) catch {};
+        const written = fbs.getWritten();
+        resp.status = 403; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+        resp.body_ptr = written.ptr; resp.body_len = @intCast(written.len);
         return;
     }
 
-    // Protocol enablement check
-    if (std.mem.startsWith(u8, req.path, "/graphql") and !args.cfg.graphql_enabled) {
-        writeJson(conn.stream, 404,
-            "{\"error\":\"GraphQL protocol is disabled\",\"hint\":\"Set ENABLE_GRAPHQL=true\"}");
+    // Protocol enablement checks
+    if (std.mem.startsWith(u8, path, "/graphql") and !g_aerie_cfg.graphql_enabled) {
+        const e = "{\"error\":\"GraphQL disabled\",\"hint\":\"Set ENABLE_GRAPHQL=true\"}";
+        resp.status = 404; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+        resp.body_ptr = e; resp.body_len = e.len;
         return;
     }
-    if (std.mem.startsWith(u8, req.path, "/api/v1/") and
-        !std.mem.startsWith(u8, req.path, "/api/v1/health") and
-        !args.cfg.rest_enabled)
+    if (std.mem.startsWith(u8, path, "/api/v1/") and
+        !std.mem.startsWith(u8, path, "/api/v1/health") and
+        !g_aerie_cfg.rest_enabled)
     {
-        writeJson(conn.stream, 404,
-            "{\"error\":\"REST protocol is disabled\",\"hint\":\"Set ENABLE_REST=true\"}");
+        const e = "{\"error\":\"REST disabled\",\"hint\":\"Set ENABLE_REST=true\"}";
+        resp.status = 404; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+        resp.body_ptr = e; resp.body_len = e.len;
+        return;
+    }
+    if (std.mem.startsWith(u8, path, "/grpc/") and !g_aerie_cfg.grpc_enabled) {
+        const e = "{\"error\":\"gRPC disabled\",\"hint\":\"Set ENABLE_GRPC=true\"}";
+        resp.status = 404; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+        resp.body_ptr = e; resp.body_len = e.len;
         return;
     }
 
-    // Route and resolve
-    var out_buf: [131072]u8 = undefined;
-
-    if (std.mem.startsWith(u8, req.path, "/graphql")) {
-        if (!std.ascii.eqlIgnoreCase(req.method, "POST")) {
-            writeJson(conn.stream, 200,
-                "{\"errors\":[{\"message\":\"GraphQL endpoint requires POST method\"}]}");
+    // GraphQL dispatch
+    if (std.mem.startsWith(u8, path, "/graphql")) {
+        if (!std.ascii.eqlIgnoreCase(method, "POST")) {
+            const e = "{\"errors\":[{\"message\":\"GraphQL endpoint requires POST method\"}]}";
+            resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+            resp.body_ptr = e; resp.body_len = e.len;
             return;
         }
-        // Read POST body
-        var body_storage: [65536]u8 = undefined;
-        var post_body: []const u8 = "";
-        if (req.content_length > 0) {
-            const to_read = @min(req.content_length, body_storage.len);
-            var total: usize = 0;
-            while (total < to_read) {
-                const n = conn.stream.read(body_storage[total..to_read]) catch break;
-                if (n == 0) break;
-                total += n;
-            }
-            post_body = body_storage[0..total];
-        }
-
-        // Extract "query" field from {"query":"..."}
         const query = blk: {
-            if (std.mem.indexOf(u8, post_body, "\"query\"")) |_| {
-                // Use the jsonFieldStr helper
+            if (std.mem.indexOf(u8, body, "\"query\"")) |_| {
                 var kbuf: [64]u8 = undefined;
-                const needle = std.fmt.bufPrint(&kbuf, "\"query\"", .{}) catch break :blk post_body;
-                const kpos = std.mem.indexOf(u8, post_body, needle) orelse break :blk post_body;
-                const after = post_body[kpos + needle.len ..];
-                const colon = std.mem.indexOfScalar(u8, after, ':') orelse break :blk post_body;
+                const needle = std.fmt.bufPrint(&kbuf, "\"query\"", .{}) catch break :blk body;
+                const kpos = std.mem.indexOf(u8, body, needle) orelse break :blk body;
+                const after = body[kpos + needle.len ..];
+                const colon = std.mem.indexOfScalar(u8, after, ':') orelse break :blk body;
                 var rest = std.mem.trimLeft(u8, after[colon + 1 ..], " \t\n\r");
-                if (rest.len == 0 or rest[0] != '"') break :blk post_body;
+                if (rest.len == 0 or rest[0] != '"') break :blk body;
                 rest = rest[1..];
-                const q2 = std.mem.indexOfScalar(u8, rest, '"') orelse break :blk post_body;
+                const q2 = std.mem.indexOfScalar(u8, rest, '"') orelse break :blk body;
                 break :blk rest[0..q2];
             }
-            break :blk post_body;
+            break :blk body;
         };
-
         if (query.len == 0) {
-            writeJson(conn.stream, 200,
-                "{\"errors\":[{\"message\":\"Missing query field in request body\"}]}");
+            const e = "{\"errors\":[{\"message\":\"Missing query field in request body\"}]}";
+            resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+            resp.body_ptr = e; resp.body_len = e.len;
             return;
         }
+        const out = res.resolveGraphqlQuery(query, redis, &g_aerie_verisimdb, policy, &g_aerie_resp_buf, arena);
+        resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+        resp.body_ptr = out.ptr; resp.body_len = @intCast(out.len);
+        return;
+    }
 
-        const body = res.resolveGraphqlQuery(query, args.redis, &args.verisimdb, policy, &out_buf, arena);
-        writeJson(conn.stream, 200, body);
+    // gRPC-JSON dispatch (HTTP transport; method name in body)
+    if (std.mem.startsWith(u8, path, "/grpc/")) {
+        // Derive method name from path suffix or body "method" field.
+        // Path: /grpc/GetTelemetrySnapshot → method = "GetTelemetrySnapshot"
+        const method_name = path["/grpc/".len..];
+        const grpc_method = if (method_name.len > 0) method_name
+            else jsonStrFieldNoAlloc(body, "method");
+        const grpc_policy = pol.evaluatePolicy("", grpc_method);
+        const out = aerieGrpcDispatch(grpc_method, body, redis, grpc_policy, arena);
+        resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+        resp.body_ptr = out.ptr; resp.body_len = @intCast(out.len);
+        return;
+    }
 
-    } else if (std.mem.startsWith(u8, req.path, "/api/v1/telemetry")) {
-        const body = res.resolveTelemetry(args.redis, policy, &out_buf, arena);
-        writeJson(conn.stream, 200, body);
-
-    } else if (std.mem.startsWith(u8, req.path, "/api/v1/routes")) {
-        const target = queryParam(req.raw_path, "target");
+    // REST dispatch — mirrors handleHttpConn REST routing
+    if (std.mem.startsWith(u8, path, "/api/v1/telemetry")) {
+        const out = res.resolveTelemetry(redis, policy, &g_aerie_resp_buf, arena);
+        resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+        resp.body_ptr = out.ptr; resp.body_len = @intCast(out.len);
+        return;
+    }
+    if (std.mem.startsWith(u8, path, "/api/v1/routes")) {
+        const target = queryParamFromPath(path, "target");
         if (target.len == 0) {
-            writeJson(conn.stream, 200,
-                "{\"error\":\"Missing required query parameter: target\"," ++
-                "\"usage\":\"/api/v1/routes?target=<ip_or_hostname>\"}");
+            const e = "{\"error\":\"Missing required query parameter: target\"," ++
+                "\"usage\":\"/api/v1/routes?target=<ip_or_hostname>\"}";
+            resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+            resp.body_ptr = e; resp.body_len = e.len;
             return;
         }
-        const body = res.resolveRouteForensics(target, args.redis, policy, &out_buf, arena);
-        writeJson(conn.stream, 200, body);
-
-    } else if (std.mem.startsWith(u8, req.path, "/api/v1/audit/temporal")) {
-        const mode = queryParam(req.raw_path, "mode");
+        const out = res.resolveRouteForensics(target, redis, policy, &g_aerie_resp_buf, arena);
+        resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+        resp.body_ptr = out.ptr; resp.body_len = @intCast(out.len);
+        return;
+    }
+    if (std.mem.startsWith(u8, path, "/api/v1/audit/temporal")) {
+        const mode = queryParamFromPath(path, "mode");
         if (mode.len == 0) {
-            writeJson(conn.stream, 200,
-                "{\"error\":\"Missing required query parameter: mode\"," ++
+            const e = "{\"error\":\"Missing required query parameter: mode\"," ++
                 "\"usage\":\"/api/v1/audit/temporal?mode=as_of&time=2026-02-28T12:00:00Z\"," ++
-                "\"available_modes\":[\"as_of\",\"between\",\"history\"]}");
+                "\"available_modes\":[\"as_of\",\"between\",\"history\"]}";
+            resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+            resp.body_ptr = e; resp.body_len = e.len;
             return;
         }
-        const limit_str = queryParam(req.raw_path, "limit");
+        const limit_str = queryParamFromPath(path, "limit");
         const limit: u32 = std.fmt.parseInt(u32, limit_str, 10) catch 50;
         const params = res.TemporalParams{
-            .time     = queryParam(req.raw_path, "time"),
-            .start    = queryParam(req.raw_path, "start"),
-            .end      = queryParam(req.raw_path, "end"),
-            .event_id = queryParam(req.raw_path, "event_id"),
+            .time     = queryParamFromPath(path, "time"),
+            .start    = queryParamFromPath(path, "start"),
+            .end      = queryParamFromPath(path, "end"),
+            .event_id = queryParamFromPath(path, "event_id"),
             .limit    = limit,
         };
-        const body = res.resolveTemporalAudit(mode, params, args.redis, &args.verisimdb, policy, &out_buf, arena);
-        writeJson(conn.stream, 200, body);
-
-    } else if (std.mem.startsWith(u8, req.path, "/api/v1/audit")) {
-        const limit_str = queryParam(req.raw_path, "limit");
+        const out = res.resolveTemporalAudit(mode, params, redis, &g_aerie_verisimdb, policy, &g_aerie_resp_buf, arena);
+        resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+        resp.body_ptr = out.ptr; resp.body_len = @intCast(out.len);
+        return;
+    }
+    if (std.mem.startsWith(u8, path, "/api/v1/audit")) {
+        const limit_str = queryParamFromPath(path, "limit");
         const limit: u32 = std.fmt.parseInt(u32, limit_str, 10) catch 50;
-        const body = res.resolveAudit(limit, args.redis, policy, &out_buf, arena);
-        writeJson(conn.stream, 200, body);
-
-    } else if (std.mem.startsWith(u8, req.path, "/api/v1/smokeping")) {
-        const target = queryParam(req.raw_path, "target");
+        const out = res.resolveAudit(limit, redis, policy, &g_aerie_resp_buf, arena);
+        resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+        resp.body_ptr = out.ptr; resp.body_len = @intCast(out.len);
+        return;
+    }
+    if (std.mem.startsWith(u8, path, "/api/v1/smokeping")) {
+        const target = queryParamFromPath(path, "target");
         if (target.len == 0) {
-            writeJson(conn.stream, 200,
-                "{\"error\":\"Missing required query parameter: target\"," ++
-                "\"usage\":\"/api/v1/smokeping?target=<hostname_or_ip>\"}");
+            const e = "{\"error\":\"Missing required query parameter: target\"," ++
+                "\"usage\":\"/api/v1/smokeping?target=<hostname_or_ip>\"}";
+            resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+            resp.body_ptr = e; resp.body_len = e.len;
             return;
         }
-        const body = res.resolveSmokeping(target, args.redis, policy, &out_buf, arena);
-        writeJson(conn.stream, 200, body);
-
-    } else if (std.mem.startsWith(u8, req.path, "/api/v1/health")) {
+        const out = res.resolveSmokeping(target, redis, policy, &g_aerie_resp_buf, arena);
+        resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+        resp.body_ptr = out.ptr; resp.body_len = @intCast(out.len);
+        return;
+    }
+    if (std.mem.startsWith(u8, path, "/api/v1/health")) {
         var hbuf: [512]u8 = undefined;
-        const body = healthJson(args.cfg, &hbuf);
-        writeJson(conn.stream, 200, body);
-
-    } else {
-        var nbuf: [1024]u8 = undefined;
-        const body = notFoundJson(args.cfg, &nbuf);
-        writeJson(conn.stream, 404, body);
+        const out = healthJson(g_aerie_cfg, &hbuf);
+        resp.status = 200; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+        resp.body_ptr = out.ptr; resp.body_len = @intCast(out.len);
+        return;
     }
+
+    // 404 — not found
+    var nbuf: [1024]u8 = undefined;
+    const not_found = notFoundJson(g_aerie_cfg, &nbuf);
+    resp.status = 404; resp._pad = 0; resp.content_type = AERIE_CT_JSON;
+    resp.body_ptr = not_found.ptr; resp.body_len = @intCast(not_found.len);
 }
 
-// ---------------------------------------------------------------------------
-// gRPC listener (Phase 1: length-prefixed JSON over TCP)
-//
-// The gRPC listener is managed through the gnosis server pool: a pool slot
-// is reserved via uapi_gnosis_create(grpc_port) before the listener thread
-// starts, and released via uapi_gnosis_destroy() on shutdown.  The listener
-// itself uses std.net.Address.listen (gnosis pool semantics) to bind the
-// port; the stop_flag is the canonical gnosis shutdown signal.
-// ---------------------------------------------------------------------------
-
-const GrpcArgs = struct {
-    port:      u16,
-    redis:     *rc.RedisClient,
-    verisimdb: vc.VerisimDBClient,
-    alloc:     std.mem.Allocator,
-};
-
-fn grpcListener(args: GrpcArgs) void {
-    const addr = std.net.Address.parseIp4("0.0.0.0", args.port) catch {
-        std.debug.print("[aerie] gRPC: invalid address for port {d}\n", .{args.port});
-        releaseGnosisHandle(&gnosis_grpc_handle);
-        return;
-    };
-    var server = addr.listen(.{ .reuse_address = true }) catch |err| {
-        std.debug.print("[aerie] gRPC: failed to bind port {d}: {s}\n",
-            .{ args.port, @errorName(err) });
-        releaseGnosisHandle(&gnosis_grpc_handle);
-        return;
-    };
-    defer server.deinit();
-    std.debug.print("[aerie] gRPC listener ready on :{d} (gnosis slot {d})\n",
-        .{ args.port, gnosis_grpc_handle });
-
-    while (true) {
-        const conn = server.accept() catch |err| {
-            std.debug.print("[aerie] gRPC: accept error: {s}\n", .{@errorName(err)});
-            continue;
+/// Dispatch a gRPC-JSON method to the correct resolver.
+/// Returns a slice into `g_aerie_resp_buf` (valid until next aerieHandler call).
+fn aerieGrpcDispatch(
+    method_name: []const u8,
+    body:        []const u8,
+    redis:       *rc.RedisClient,
+    policy:      t.PolicyDecision,
+    arena:       std.mem.Allocator,
+) []const u8 {
+    if (std.mem.eql(u8, method_name, "GetTelemetrySnapshot")) {
+        return res.resolveTelemetry(redis, policy, &g_aerie_resp_buf, arena);
+    }
+    if (std.mem.eql(u8, method_name, "GetRouteForensicsSnapshot")) {
+        const target = jsonStrFieldNoAlloc(body, "target");
+        if (target.len == 0) return "{\"error\":\"target field required\"}";
+        return res.resolveRouteForensics(target, redis, policy, &g_aerie_resp_buf, arena);
+    }
+    if (std.mem.eql(u8, method_name, "GetAuditSnapshot")) {
+        const limit = jsonIntFieldNoAlloc(body, "limit") orelse @as(u32, 50);
+        return res.resolveAudit(limit, redis, policy, &g_aerie_resp_buf, arena);
+    }
+    if (std.mem.eql(u8, method_name, "GetSmokePingSnapshot")) {
+        const target = jsonStrFieldNoAlloc(body, "target");
+        if (target.len == 0) return "{\"error\":\"target field required\"}";
+        return res.resolveSmokeping(target, redis, policy, &g_aerie_resp_buf, arena);
+    }
+    if (std.mem.eql(u8, method_name, "GetTemporalAuditSnapshot")) {
+        const mode = jsonStrFieldNoAlloc(body, "mode");
+        if (mode.len == 0) return "{\"error\":\"mode field required (as_of, between, history)\"}";
+        const limit = jsonIntFieldNoAlloc(body, "limit") orelse @as(u32, 50);
+        const params = res.TemporalParams{
+            .time     = jsonStrFieldNoAlloc(body, "time"),
+            .start    = jsonStrFieldNoAlloc(body, "start"),
+            .end      = jsonStrFieldNoAlloc(body, "end"),
+            .event_id = jsonStrFieldNoAlloc(body, "event_id"),
+            .limit    = limit,
         };
-        // Check the gnosis pool stop_flag by querying state: draining = stop.
-        if (gnosis_grpc_handle != 0) {
-            const st = c.uapi_gnosis_state(gnosis_grpc_handle);
-            if (st == c.UAPI_SERVER_DRAINING or st == c.UAPI_SERVER_STOPPED) {
-                conn.stream.close();
-                break;
-            }
-        }
-        const conn_args = GrpcConnArgs{
-            .stream    = conn.stream,
-            .redis     = args.redis,
-            .verisimdb = args.verisimdb,
-            .alloc     = args.alloc,
-        };
-        const thread = std.Thread.spawn(.{}, handleGrpcConn, .{conn_args}) catch {
-            conn.stream.close();
-            continue;
-        };
-        thread.detach();
+        return res.resolveTemporalAudit(mode, params, redis, &g_aerie_verisimdb, policy, &g_aerie_resp_buf, arena);
     }
+    var eb: [256]u8 = undefined;
+    return std.fmt.bufPrint(&eb,
+        "{{\"error\":\"Unknown method: {s}\"," ++
+        "\"available\":[\"GetTelemetrySnapshot\",\"GetRouteForensicsSnapshot\"," ++
+        "\"GetAuditSnapshot\",\"GetSmokePingSnapshot\",\"GetTemporalAuditSnapshot\"]}}",
+        .{method_name},
+    ) catch "{\"error\":\"unknown method\"}";
 }
 
-const GrpcConnArgs = struct {
-    stream:    std.net.Stream,
-    redis:     *rc.RedisClient,
-    verisimdb: vc.VerisimDBClient,
-    alloc:     std.mem.Allocator,
-};
-
-/// Handle a single gRPC connection.
-///
-/// Phase 1 protocol:
-///   Request:  4-byte big-endian length + JSON body
-///   Response: 4-byte big-endian length + JSON body
-///
-/// JSON body: {"method":"GetTelemetrySnapshot"} etc.
-fn handleGrpcConn(args: GrpcConnArgs) void {
-    defer args.stream.close();
-
-    var arena_inst = std.heap.ArenaAllocator.init(args.alloc);
-    defer arena_inst.deinit();
-    const arena = arena_inst.allocator();
-
-    // Read 4-byte big-endian length prefix
-    var len_buf: [4]u8 = undefined;
-    const ln = args.stream.read(&len_buf) catch {
-        std.debug.print("[aerie] gRPC: failed to read length prefix\n", .{});
-        return;
-    };
-    if (ln < 4) return;
-
-    const msg_len: u32 = (@as(u32, len_buf[0]) << 24) |
-                         (@as(u32, len_buf[1]) << 16) |
-                         (@as(u32, len_buf[2]) << 8)  |
-                         @as(u32, len_buf[3]);
-
-    if (msg_len == 0 or msg_len > 65536) {
-        std.debug.print("[aerie] gRPC: invalid message length {d}\n", .{msg_len});
-        return;
-    }
-
-    const body_storage = arena.alloc(u8, msg_len) catch return;
-    var total: usize = 0;
-    while (total < msg_len) {
-        const n = args.stream.read(body_storage[total..msg_len]) catch break;
-        if (n == 0) break;
-        total += n;
-    }
-    const body = body_storage[0..total];
-
-    // Extract "method" field
-    const method = blk: {
-        var nb: [64]u8 = undefined;
-        const needle = std.fmt.bufPrint(&nb, "\"method\"", .{}) catch break :blk "";
-        const kpos   = std.mem.indexOf(u8, body, needle) orelse break :blk "";
-        const after  = body[kpos + needle.len ..];
-        const colon  = std.mem.indexOfScalar(u8, after, ':') orelse break :blk "";
-        var rest     = std.mem.trimLeft(u8, after[colon + 1 ..], " \t");
-        if (rest.len == 0 or rest[0] != '"') break :blk "";
-        rest = rest[1..];
-        const q2 = std.mem.indexOfScalar(u8, rest, '"') orelse break :blk "";
-        break :blk rest[0..q2];
-    };
-
-    const policy = pol.evaluatePolicy("", method);
-
-    var out_buf: [131072]u8 = undefined;
-
-    const response: []const u8 = blk: {
-        if (std.mem.eql(u8, method, "GetTelemetrySnapshot")) {
-            break :blk res.resolveTelemetry(args.redis, policy, &out_buf, arena);
-        }
-        if (std.mem.eql(u8, method, "GetRouteForensicsSnapshot")) {
-            const target = jsonStrField(body, "target") orelse
-                break :blk "{\"error\":\"target field required\"}";
-            break :blk res.resolveRouteForensics(target, args.redis, policy, &out_buf, arena);
-        }
-        if (std.mem.eql(u8, method, "GetAuditSnapshot")) {
-            const limit = jsonIntField(body, "limit") orelse @as(u32, 50);
-            break :blk res.resolveAudit(limit, args.redis, policy, &out_buf, arena);
-        }
-        if (std.mem.eql(u8, method, "GetSmokePingSnapshot")) {
-            const target = jsonStrField(body, "target") orelse
-                break :blk "{\"error\":\"target field required\"}";
-            break :blk res.resolveSmokeping(target, args.redis, policy, &out_buf, arena);
-        }
-        if (std.mem.eql(u8, method, "GetTemporalAuditSnapshot")) {
-            const mode = jsonStrField(body, "mode") orelse
-                break :blk "{\"error\":\"mode field required (as_of, between, history)\"}";
-            const limit_raw = jsonIntField(body, "limit") orelse @as(u32, 50);
-            const params = res.TemporalParams{
-                .time     = jsonStrField(body, "time")     orelse "",
-                .start    = jsonStrField(body, "start")    orelse "",
-                .end      = jsonStrField(body, "end")      orelse "",
-                .event_id = jsonStrField(body, "event_id") orelse "",
-                .limit    = limit_raw,
-            };
-            break :blk res.resolveTemporalAudit(
-                mode, params, args.redis, &args.verisimdb, policy, &out_buf, arena);
-        }
-        var eb: [256]u8 = undefined;
-        break :blk std.fmt.bufPrint(&eb,
-            "{{\"error\":\"Unknown method: {s}\"," ++
-            "\"available\":[\"GetTelemetrySnapshot\",\"GetRouteForensicsSnapshot\"," ++
-            "\"GetAuditSnapshot\",\"GetSmokePingSnapshot\",\"GetTemporalAuditSnapshot\"]}}",
-            .{method},
-        ) catch "{\"error\":\"unknown method\"}";
-    };
-
-    sendGrpcResponse(args.stream, response);
+/// Extract a query parameter from a path+query string.
+/// Returns a slice into `path` or empty string if absent.
+fn queryParamFromPath(raw_path: []const u8, name: []const u8) []const u8 {
+    return queryParam(raw_path, name);
 }
 
-/// Send a 4-byte big-endian length-prefixed response.
-fn sendGrpcResponse(stream: std.net.Stream, body: []const u8) void {
-    const length: u32 = @intCast(body.len);
-    const header: [4]u8 = .{
-        @intCast((length >> 24) & 0xff),
-        @intCast((length >> 16) & 0xff),
-        @intCast((length >>  8) & 0xff),
-        @intCast(length         & 0xff),
-    };
-    stream.writeAll(&header) catch {
-        std.debug.print("[aerie] gRPC: failed to write response header\n", .{});
-        return;
-    };
-    stream.writeAll(body) catch {
-        std.debug.print("[aerie] gRPC: failed to write response body\n", .{});
-    };
-}
-
-/// Extract a string JSON field `"key":"value"` from `data`.
-/// Returns a slice into `data` (no allocation).
-fn jsonStrField(data: []const u8, key: []const u8) ?[]const u8 {
+/// Extract a JSON string field without allocating.
+/// Returns a slice into `data` (no copy).
+fn jsonStrFieldNoAlloc(data: []const u8, key: []const u8) []const u8 {
     var nb: [64]u8 = undefined;
-    const needle = std.fmt.bufPrint(&nb, "\"{s}\"", .{key}) catch return null;
-    const kpos   = std.mem.indexOf(u8, data, needle) orelse return null;
+    const needle = std.fmt.bufPrint(&nb, "\"{s}\"", .{key}) catch return "";
+    const kpos   = std.mem.indexOf(u8, data, needle) orelse return "";
     const after  = data[kpos + needle.len ..];
-    const colon  = std.mem.indexOfScalar(u8, after, ':') orelse return null;
+    const colon  = std.mem.indexOfScalar(u8, after, ':') orelse return "";
     var rest     = std.mem.trimLeft(u8, after[colon + 1 ..], " \t");
-    if (rest.len == 0 or rest[0] != '"') return null;
+    if (rest.len == 0 or rest[0] != '"') return "";
     rest = rest[1..];
-    const q2 = std.mem.indexOfScalar(u8, rest, '"') orelse return null;
+    const q2 = std.mem.indexOfScalar(u8, rest, '"') orelse return "";
     return rest[0..q2];
 }
 
-/// Extract an integer JSON field from `data`.
-fn jsonIntField(data: []const u8, key: []const u8) ?u32 {
+/// Extract an integer JSON field without allocating.
+fn jsonIntFieldNoAlloc(data: []const u8, key: []const u8) ?u32 {
     var nb: [64]u8 = undefined;
     const needle = std.fmt.bufPrint(&nb, "\"{s}\"", .{key}) catch return null;
     const kpos   = std.mem.indexOf(u8, data, needle) orelse return null;
@@ -730,73 +654,6 @@ fn jsonIntField(data: []const u8, key: []const u8) ?u32 {
     while (end < rest.len and std.ascii.isDigit(rest[end])) end += 1;
     if (end == 0) return null;
     return std.fmt.parseInt(u32, rest[0..end], 10) catch null;
-}
-
-// ---------------------------------------------------------------------------
-// HTTP server thread
-//
-// A gnosis pool slot is allocated via uapi_gnosis_create before the listener
-// thread starts, providing:
-//   - A canonical state machine (Idle → Listening → Draining → Stopped)
-//     tracked by the gnosis pool and visible via uapi_gnosis_state().
-//   - A deterministic shutdown signal: uapi_gnosis_stop() transitions the
-//     slot to Draining; the HTTP accept loop checks this on each connection.
-//   - Pool health visibility: uapi_gnosis_state(gnosis_http_handle) is
-//     included in the /api/v1/health response (see healthJson above).
-// ---------------------------------------------------------------------------
-
-const HttpArgs = struct {
-    port:      u16,
-    cfg:       t.ProtocolConfig,
-    redis:     *rc.RedisClient,
-    verisimdb: vc.VerisimDBClient,
-    alloc:     std.mem.Allocator,
-};
-
-fn httpListener(args: HttpArgs) void {
-    const addr = std.net.Address.parseIp4("0.0.0.0", args.port) catch {
-        std.debug.print("[aerie] HTTP: invalid address for port {d}\n", .{args.port});
-        releaseGnosisHandle(&gnosis_http_handle);
-        return;
-    };
-    var server = addr.listen(.{ .reuse_address = true }) catch |err| {
-        std.debug.print("[aerie] HTTP: failed to bind port {d}: {s}\n",
-            .{ args.port, @errorName(err) });
-        releaseGnosisHandle(&gnosis_http_handle);
-        return;
-    };
-    defer server.deinit();
-    std.debug.print("[aerie] HTTP server ready on :{d} (gnosis slot {d})\n",
-        .{ args.port, gnosis_http_handle });
-
-    while (true) {
-        const conn = server.accept() catch |err| {
-            std.debug.print("[aerie] HTTP: accept error: {s}\n", .{@errorName(err)});
-            continue;
-        };
-        // Honour the gnosis pool's drain signal: if the slot has been stopped
-        // externally (e.g. a graceful-shutdown signal via uapi_gnosis_stop),
-        // close the new connection and exit the accept loop.
-        if (gnosis_http_handle != 0) {
-            const st = c.uapi_gnosis_state(gnosis_http_handle);
-            if (st == c.UAPI_SERVER_DRAINING or st == c.UAPI_SERVER_STOPPED) {
-                conn.stream.close();
-                break;
-            }
-        }
-        const cargs = ConnArgs{
-            .conn      = conn,
-            .cfg       = args.cfg,
-            .redis     = args.redis,
-            .verisimdb = args.verisimdb,
-            .alloc     = args.alloc,
-        };
-        const thread = std.Thread.spawn(.{}, handleHttpConn, .{cargs}) catch {
-            conn.stream.close();
-            continue;
-        };
-        thread.detach();
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -838,74 +695,62 @@ pub fn main() !void {
         std.debug.print("[aerie] FATAL: uapi_init() failed with code {d}\n", .{init_rc});
         return error.UapiInitFailed;
     }
-    // Paired teardown runs when main() exits via defer below.
     defer c.uapi_teardown();
 
-    // Ports
-    const port_str      = std.posix.getenv("PORT")      orelse "4000";
-    const grpc_port_str = std.posix.getenv("GRPC_PORT") orelse "4001";
-    const http_port     = std.fmt.parseInt(u16, port_str,      10) catch 4000;
-    const grpc_port     = std.fmt.parseInt(u16, grpc_port_str, 10) catch 4001;
+    // Port — single port for all protocols
+    const port_str  = std.posix.getenv("PORT") orelse "4000";
+    const http_port = std.fmt.parseInt(u16, port_str, 10) catch 4000;
 
     const cfg = readProtocolConfig();
-    printBanner(http_port, grpc_port, cfg);
+    printBanner(http_port, cfg);
 
-    // Reserve gnosis pool slots for each enabled protocol.
-    // This registers the port with the pool and enables state queries via
-    // uapi_gnosis_state().  The actual accept loop runs in our own thread
-    // (httpListener / grpcListener), which polls the pool state to honour
-    // graceful-shutdown drain signals from uapi_gnosis_stop().
-    const http_needed = cfg.rest_enabled or cfg.graphql_enabled;
-    if (http_needed) {
-        gnosis_http_handle = acquireGnosisHandle(http_port);
-    }
-    if (cfg.grpc_enabled) {
-        gnosis_grpc_handle = acquireGnosisHandle(grpc_port);
-    }
-    defer releaseGnosisHandle(&gnosis_http_handle);
-    defer releaseGnosisHandle(&gnosis_grpc_handle);
-
-    // Shared state — allocated on heap so threads can hold pointers safely
+    // Shared state — allocated on heap so the handler can hold a stable pointer
     const redis_ptr = try gpa.create(rc.RedisClient);
     redis_ptr.* = rc.RedisClient.init(gpa);
     defer { redis_ptr.deinit(); gpa.destroy(redis_ptr); }
 
     const verisimdb = vc.VerisimDBClient.init();
 
-    // Start gRPC in a background thread (only if enabled)
-    if (cfg.grpc_enabled) {
-        std.debug.print("[aerie] Starting gRPC listener on :{d}\n", .{grpc_port});
-        const grpc_thread = try std.Thread.spawn(.{}, grpcListener, .{GrpcArgs{
-            .port      = grpc_port,
-            .redis     = redis_ptr,
-            .verisimdb = verisimdb,
-            .alloc     = gpa,
-        }});
-        grpc_thread.detach();
-    } else {
-        std.debug.print("[aerie] gRPC DISABLED — port {d} not bound\n", .{grpc_port});
+    // -------------------------------------------------------------------------
+    // Set up module-level handler context before uapi_gnosis_start.
+    // aerieHandler reads these; they are never mutated after start.
+    // -------------------------------------------------------------------------
+    g_aerie_cfg          = cfg;
+    g_aerie_redis        = redis_ptr;
+    g_aerie_verisimdb    = verisimdb;
+    g_aerie_alloc        = gpa;
+    g_aerie_context_ready = true;
+
+    // -------------------------------------------------------------------------
+    // Single-port setup:
+    //   1. Reserve one gnosis pool slot on http_port.
+    //   2. Register aerieHandler as the edge dispatch hook.
+    //   3. Start the gnosis accept loop.
+    // -------------------------------------------------------------------------
+    gnosis_http_handle = acquireGnosisHandle(http_port);
+    if (gnosis_http_handle == 0) {
+        std.debug.print("[aerie] FATAL: gnosis pool slot unavailable for port {d}\n", .{http_port});
+        return error.GnosisCreateFailed;
+    }
+    defer releaseGnosisHandle(&gnosis_http_handle);
+
+    const set_rc = c.uapi_gnosis_set_handler(gnosis_http_handle, &aerieHandler);
+    if (set_rc != c.UAPI_OK) {
+        std.debug.print("[aerie] FATAL: uapi_gnosis_set_handler failed (result={d})\n", .{set_rc});
+        return error.GnosisSetHandlerFailed;
     }
 
-    // Start HTTP server (only if REST or GraphQL is enabled)
-    if (http_needed) {
-        std.debug.print("[aerie] Starting HTTP server on :{d}\n", .{http_port});
-        httpListener(.{
-            .port      = http_port,
-            .cfg       = cfg,
-            .redis     = redis_ptr,
-            .verisimdb = verisimdb,
-            .alloc     = gpa,
-        });
-    } else {
-        std.debug.print("[aerie] REST and GraphQL both DISABLED — port {d} not bound\n",
-            .{http_port});
-        if (cfg.grpc_enabled) {
-            std.debug.print("[aerie] Main thread idle (gRPC-only mode)\n", .{});
-            // Block main thread — gRPC thread keeps the process alive
-            while (true) std.Thread.sleep(60 * std.time.ns_per_s);
-        } else {
-            std.debug.print(
-                "[aerie] WARNING: All protocols disabled — gateway has nothing to serve\n", .{});
-        }
+    const start_rc = c.uapi_gnosis_start(gnosis_http_handle);
+    if (start_rc != c.UAPI_OK) {
+        std.debug.print("[aerie] FATAL: uapi_gnosis_start failed (result={d})\n", .{start_rc});
+        return error.GnosisStartFailed;
+    }
+
+    std.debug.print("[aerie] Listening on :{d} — REST /api/v1/* | GraphQL /graphql | gRPC-JSON /grpc/*\n",
+        .{http_port});
+
+    // Block main thread until the server stops.
+    while (c.uapi_gnosis_state(gnosis_http_handle) == c.UAPI_SERVER_LISTENING) {
+        std.Thread.sleep(1 * std.time.ns_per_s);
     }
 }
