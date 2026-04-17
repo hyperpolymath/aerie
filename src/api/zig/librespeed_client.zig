@@ -85,41 +85,12 @@ fn ensureSlot() u8 {
 /// HTTP GET helper: fetches `url`, writes body into `body_buf`.
 /// Returns a slice of `body_buf` on success, or an error.
 ///
-/// The `url` parameter must be an absolute URL beginning with "http://".
-/// If the base matches LIBRESPEED_URL the call goes through the pooled
-/// connector slot; otherwise a temporary connector is allocated.
+/// The `url` parameter must be an absolute URL beginning with "http://"
+/// and must start with the LIBRESPEED_URL base.  Calls go through the
+/// pooled connector slot for reuse.
 pub fn httpGet(url: []const u8, body_buf: []u8) ![]const u8 {
-    const base = ensureBaseUrl();
-
-    // Select the slot to use.  If the url starts with our base URL, reuse the
-    // persistent slot.  Otherwise create a temporary one for the caller.
-    var slot: u8 = undefined;
-    var temp_slot: u8 = 255;
-    var own_slot = false;
-
-    if (std.mem.startsWith(u8, url, base)) {
-        slot = ensureSlot();
-        if (slot == 255) return error.ConnectorUnavailable;
-    } else {
-        // Caller is using a different base URL (e.g. smokeping, hyperglass).
-        // Parse out the base URL and create a temporary slot.
-        const without_scheme = if (std.mem.startsWith(u8, url, "http://"))
-            url[7..]
-        else
-            return error.UnsupportedScheme;
-        const slash_pos = std.mem.indexOfScalar(u8, without_scheme, '/') orelse without_scheme.len;
-        var tmp_base_buf: [257]u8 = undefined;
-        const tmp_prefix = "http://";
-        @memcpy(tmp_base_buf[0..tmp_prefix.len], tmp_prefix);
-        @memcpy(tmp_base_buf[tmp_prefix.len..][0..slash_pos], without_scheme[0..slash_pos]);
-        tmp_base_buf[tmp_prefix.len + slash_pos] = 0;
-        temp_slot = c.uapi_connector_create(LIBRESPEED_SERVICE_ID,
-            @as([*:0]const u8, @ptrCast(&tmp_base_buf)));
-        if (temp_slot == 255) return error.ConnectorUnavailable;
-        slot = temp_slot;
-        own_slot = true;
-    }
-    defer if (own_slot) c.uapi_connector_destroy(temp_slot);
+    const slot = ensureSlot();
+    if (slot == 255) return error.ConnectorUnavailable;
 
     // Extract the path portion of the URL.
     const without_scheme2 = if (std.mem.startsWith(u8, url, "http://"))
