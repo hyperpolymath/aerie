@@ -60,7 +60,7 @@ PID_FILE="/tmp/aerie.pid"
 LOG_FILE="/tmp/aerie.log"
 
 # Explicit argv from [runtime].command
-START_COMMAND=(/home/hyper/Desktop/Project_Work/launchers/repo-quicklaunch.sh /var/mnt/eclipse/repos/aerie Aerie just tour )
+START_COMMAND=(/var/mnt/eclipse/repos/.desktop-tools/launchers/repo-quicklaunch.sh /var/mnt/eclipse/repos/aerie Aerie just tour )
 
 MODE="${1:---start}"
 FORCE="false"
