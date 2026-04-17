@@ -10,7 +10,7 @@ for tamper-evident responses, and a policy gate for access control.
 
 - **ABI**: Idris2 (`src/abi/`) — formal type definitions with proofs
 - **FFI**: Zig (`ffi/zig/`) — C-compatible implementation layer
-- **API Gateway**: V-lang (`src/api/v/`) — GraphQL + REST server on port 4000
+- **API Gateway**: Zig (`src/api/zig/`) — GraphQL + REST server on port 4000 (ported from V-lang 2026-04-17; `src/api/v/` sidelined, see `MIGRATION.adoc`)
 - **Probes**: LibreSpeed (speed), Hyperglass (BGP), SmokePing (jitter)
 - **Data**: Redis (cache/audit), VerisimDB (bitemporal, future)
 - **Container**: Podman Compose with Chainguard base images

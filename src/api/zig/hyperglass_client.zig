@@ -1,0 +1,194 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+//
+// hyperglass_client.zig — HTTP Client for Hyperglass BGP Probe
+//
+// Queries the Hyperglass looking glass at HYPERGLASS_URL
+// (default http://hyperglass:8082) for BGP route forensics data.
+// Falls back to an empty path on any error.
+//
+// Replaces: hyperglass_client.v
+
+const std  = @import("std");
+const t    = @import("types.zig");
+const ls   = @import("librespeed_client.zig");
+
+fn getHyperglassUrl(buf: []u8) []const u8 {
+    if (std.posix.getenv("HYPERGLASS_URL")) |url| {
+        const n = @min(url.len, buf.len - 1);
+        @memcpy(buf[0..n], url[0..n]);
+        buf[n] = 0;
+        return buf[0..n];
+    }
+    const def = "http://hyperglass:8082";
+    @memcpy(buf[0..def.len], def);
+    return buf[0..def.len];
+}
+
+/// HTTP POST helper: posts JSON body to `url`, writes response body into `body_buf`.
+fn httpPost(url: []const u8, post_body: []const u8, body_buf: []u8) ![]const u8 {
+    const without_scheme = if (std.mem.startsWith(u8, url, "http://"))
+        url[7..]
+    else
+        return error.UnsupportedScheme;
+
+    const slash = std.mem.indexOfScalar(u8, without_scheme, '/') orelse without_scheme.len;
+    const host_port = without_scheme[0..slash];
+    const path: []const u8 = if (slash < without_scheme.len) without_scheme[slash..] else "/";
+
+    var host_buf: [128]u8 = undefined;
+    var port: u16 = 80;
+    if (std.mem.indexOfScalar(u8, host_port, ':')) |ci| {
+        const h = host_port[0..ci];
+        @memcpy(host_buf[0..h.len], h);
+        host_buf[h.len] = 0;
+        port = std.fmt.parseInt(u16, host_port[ci + 1 ..], 10) catch 80;
+    } else {
+        @memcpy(host_buf[0..host_port.len], host_port);
+        host_buf[host_port.len] = 0;
+    }
+    const host_str = host_buf[0..host_port.len];
+
+    const addr = std.net.Address.resolveIp(host_str, port) catch
+        try std.net.Address.parseIp4(host_str, port);
+    const stream = try std.net.tcpConnectToAddress(addr);
+    defer stream.close();
+
+    var req_buf: [1024]u8 = undefined;
+    const req_hdr = try std.fmt.bufPrint(&req_buf,
+        "POST {s} HTTP/1.0\r\nHost: {s}\r\nContent-Type: application/json\r\n" ++
+        "Content-Length: {d}\r\nConnection: close\r\n\r\n",
+        .{ path, host_str, post_body.len },
+    );
+    try stream.writeAll(req_hdr);
+    try stream.writeAll(post_body);
+
+    const n = stream.read(body_buf) catch return error.ReadFailed;
+    const raw = body_buf[0..n];
+    if (std.mem.indexOf(u8, raw, "\r\n\r\n")) |hdr_end| {
+        return raw[hdr_end + 4 ..];
+    }
+    return raw;
+}
+
+/// Max route hops we handle.
+pub const MAX_HOPS = 64;
+
+/// Fetch BGP route forensics for `target`.
+/// Writes up to MAX_HOPS hops into `hops_out`; returns number written.
+/// On error, returns 0 hops (caller sees an empty path).
+pub fn getRouteForensics(
+    target:   []const u8,
+    hops_out: *[MAX_HOPS]t.RouteHop,
+) usize {
+    var url_buf:  [256]u8 = undefined;
+    const base = getHyperglassUrl(&url_buf);
+
+    var full_url_buf: [512]u8 = undefined;
+    const url = std.fmt.bufPrint(&full_url_buf, "{s}/api/query/", .{base}) catch return 0;
+
+    // Build POST body — sanitise target to prevent JSON injection
+    var post_buf: [256]u8 = undefined;
+    const post_body = std.fmt.bufPrint(&post_buf,
+        "{{\"query_location\":\"\",\"query_target\":\"{s}\",\"query_type\":\"bgp_route\"}}",
+        .{target},
+    ) catch return 0;
+
+    var body_buf: [16384]u8 = undefined;
+    const body = httpPost(url, post_body, &body_buf) catch {
+        std.debug.print("[aerie] hyperglass: probe unreachable at {s}\n", .{base});
+        return 0;
+    };
+
+    return parseRouteHops(body, hops_out);
+}
+
+/// Parse Hyperglass JSON response into RouteHop array.
+/// Handles the array-of-objects format returned by Hyperglass.
+fn parseRouteHops(body: []const u8, hops: *[MAX_HOPS]t.RouteHop) usize {
+    var count: usize = 0;
+    if (!std.mem.startsWith(u8, std.mem.trimLeft(u8, body, " \t\r\n"), "[")) return 0;
+
+    // Walk the array: find each "{" ... "}" object and extract fields.
+    var pos: usize = 0;
+    while (pos < body.len and count < MAX_HOPS) {
+        const obj_start = std.mem.indexOfScalarPos(u8, body, pos, '{') orelse break;
+        const obj_end   = std.mem.indexOfScalarPos(u8, body, obj_start, '}') orelse break;
+        const obj       = body[obj_start .. obj_end + 1];
+        pos             = obj_end + 1;
+
+        var hop: t.RouteHop = std.mem.zeroes(t.RouteHop);
+        hop.hop = @intCast(count + 1);
+
+        // Try "prefix" then "ip" for the IP field
+        if (jsonStrField(obj, "prefix")) |ip| {
+            const n = @min(ip.len, 63);
+            @memcpy(hop.ip[0..n], ip[0..n]);
+            hop.ip[n]   = 0;
+            hop.ip_len  = n;
+        } else if (jsonStrField(obj, "ip")) |ip| {
+            const n = @min(ip.len, 63);
+            @memcpy(hop.ip[0..n], ip[0..n]);
+            hop.ip[n]   = 0;
+            hop.ip_len  = n;
+        }
+
+        // Try "as_path" then "asn"
+        if (jsonStrField(obj, "as_path")) |asn| {
+            const n = @min(asn.len, 63);
+            @memcpy(hop.asn[0..n], asn[0..n]);
+            hop.asn[n]  = 0;
+            hop.asn_len = n;
+        } else if (jsonStrField(obj, "asn")) |asn| {
+            const n = @min(asn.len, 63);
+            @memcpy(hop.asn[0..n], asn[0..n]);
+            hop.asn[n]  = 0;
+            hop.asn_len = n;
+        }
+
+        hops[count] = hop;
+        count += 1;
+    }
+    return count;
+}
+
+/// Minimal JSON string field extractor: find `"key":"value"` and return the value slice.
+/// Returns null if key absent. Slice points into `data`.
+fn jsonStrField(data: []const u8, key: []const u8) ?[]const u8 {
+    var needle_buf: [64]u8 = undefined;
+    const needle = std.fmt.bufPrint(&needle_buf, "\"{s}\"", .{key}) catch return null;
+    const kpos = std.mem.indexOf(u8, data, needle) orelse return null;
+    const after = data[kpos + needle.len ..];
+    const colon = std.mem.indexOfScalar(u8, after, ':') orelse return null;
+    var rest = std.mem.trimLeft(u8, after[colon + 1 ..], " \t");
+    if (rest.len == 0 or rest[0] != '"') return null;
+    rest = rest[1..];
+    const end = std.mem.indexOfScalar(u8, rest, '"') orelse return null;
+    return rest[0..end];
+}
+
+/// Serialise route forensics to JSON in `buf`.
+/// `target`: the queried target; `hops`: slice of RouteHop.
+pub fn routeForensicsToJson(
+    target: []const u8,
+    hops:   []const t.RouteHop,
+    buf:    []u8,
+) ![]const u8 {
+    var fbs = std.io.fixedBufferStream(buf);
+    const w = fbs.writer();
+    try w.print("{{\"target\":\"{s}\",\"path\":[", .{target});
+    for (hops, 0..) |h, i| {
+        if (i > 0) try w.writeByte(',');
+        const asn_field = std.mem.sliceTo(&h.asn, 0);
+        const ip_field  = std.mem.sliceTo(&h.ip, 0);
+        if (asn_field.len > 0) {
+            try w.print("{{\"hop\":{d},\"ip\":\"{s}\",\"asn\":\"{s}\",\"rttMs\":null}}",
+                .{ h.hop, ip_field, asn_field });
+        } else {
+            try w.print("{{\"hop\":{d},\"ip\":\"{s}\",\"asn\":null,\"rttMs\":null}}",
+                .{ h.hop, ip_field });
+        }
+    }
+    try w.writeAll("]}");
+    return fbs.getWritten();
+}
