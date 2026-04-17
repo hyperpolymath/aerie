@@ -4,8 +4,14 @@
 // librespeed_client.zig — HTTP Client for LibreSpeed Probe
 //
 // Queries the LibreSpeed backend at LIBRESPEED_URL (default http://librespeed:8080)
-// to obtain zero-telemetry speed test results. Parses the response into
+// to obtain zero-telemetry speed test results.  Parses the response into
 // TelemetrySample records matching the Idris2 ABI and protobuf definitions.
+//
+// Transport layer: uapi_connector_* (developer-ecosystem/zig-api) — replaces
+// the hand-rolled std.net.tcpConnectToAddress / HTTP/1.0 send-recv loop.
+// A single connector slot is lazily allocated on first use and reused for
+// subsequent requests.  The slot is released on process exit via the
+// library-level uapi_teardown() called in main.zig.
 //
 // Replaces: librespeed_client.v
 
@@ -13,16 +19,148 @@ const std = @import("std");
 const t   = @import("types.zig");
 const prf = @import("proof.zig");
 
-fn getLibrespeedUrl(buf: []u8) []const u8 {
-    if (std.posix.getenv("LIBRESPEED_URL")) |url| {
-        const n = @min(url.len, buf.len - 1);
-        @memcpy(buf[0..n], url[0..n]);
-        buf[n] = 0;
-        return buf[0..n];
-    }
+/// C ABI imports from libzig_api.
+const c = @cImport({
+    @cInclude("zig_api.h");
+});
+
+// ---------------------------------------------------------------------------
+// Connector slot (lazily initialised, module-level)
+// ---------------------------------------------------------------------------
+
+/// UAPI_SERVICE_AMBIENT_OPS is the nearest service-id for librespeed (an
+/// ambient/probe service).  The service-id tag only affects pool diagnostics;
+/// the actual target URL is set via the base_url argument to
+/// uapi_connector_create.
+const LIBRESPEED_SERVICE_ID: u8 = c.UAPI_SERVICE_AMBIENT_OPS;
+
+/// 255 means "not yet allocated".
+var connector_slot: u8 = 255;
+
+/// URL buffer for the base URL read from the environment.
+var base_url_buf: [256]u8 = undefined;
+var base_url_len: usize   = 0;
+var base_url_init: bool   = false;
+
+fn ensureBaseUrl() []const u8 {
+    if (base_url_init) return base_url_buf[0..base_url_len];
     const def = "http://librespeed:8080";
-    @memcpy(buf[0..def.len], def);
-    return buf[0..def.len];
+    if (std.posix.getenv("LIBRESPEED_URL")) |url| {
+        const n = @min(url.len, base_url_buf.len - 1);
+        @memcpy(base_url_buf[0..n], url[0..n]);
+        base_url_buf[n] = 0;
+        base_url_len = n;
+    } else {
+        @memcpy(base_url_buf[0..def.len], def);
+        base_url_buf[def.len] = 0;
+        base_url_len = def.len;
+    }
+    base_url_init = true;
+    return base_url_buf[0..base_url_len];
+}
+
+/// Ensure the connector slot is allocated.
+/// Returns the slot index, or 255 on failure.
+fn ensureSlot() u8 {
+    if (connector_slot != 255) return connector_slot;
+    const url = ensureBaseUrl();
+    // uapi_connector_create expects a null-terminated string.
+    var url_nt: [257]u8 = undefined;
+    @memcpy(url_nt[0..url.len], url);
+    url_nt[url.len] = 0;
+    connector_slot = c.uapi_connector_create(LIBRESPEED_SERVICE_ID, &url_nt);
+    if (connector_slot == 255) {
+        std.debug.print("[aerie] librespeed: connector pool exhausted\n", .{});
+    }
+    return connector_slot;
+}
+
+// ---------------------------------------------------------------------------
+// httpGet — public shared helper used by other clients
+//
+// Replaced: hand-rolled std.net.tcpConnectToAddress + HTTP/1.0 write/read
+// Replacement: uapi_connector_call (UAPI_METHOD_GET)
+// ---------------------------------------------------------------------------
+
+/// HTTP GET helper: fetches `url`, writes body into `body_buf`.
+/// Returns a slice of `body_buf` on success, or an error.
+///
+/// The `url` parameter must be an absolute URL beginning with "http://".
+/// If the base matches LIBRESPEED_URL the call goes through the pooled
+/// connector slot; otherwise a temporary connector is allocated.
+pub fn httpGet(url: []const u8, body_buf: []u8) ![]const u8 {
+    const base = ensureBaseUrl();
+
+    // Select the slot to use.  If the url starts with our base URL, reuse the
+    // persistent slot.  Otherwise create a temporary one for the caller.
+    var slot: u8 = undefined;
+    var temp_slot: u8 = 255;
+    var own_slot = false;
+
+    if (std.mem.startsWith(u8, url, base)) {
+        slot = ensureSlot();
+        if (slot == 255) return error.ConnectorUnavailable;
+    } else {
+        // Caller is using a different base URL (e.g. smokeping, hyperglass).
+        // Parse out the base URL and create a temporary slot.
+        const without_scheme = if (std.mem.startsWith(u8, url, "http://"))
+            url[7..]
+        else
+            return error.UnsupportedScheme;
+        const slash_pos = std.mem.indexOfScalar(u8, without_scheme, '/') orelse without_scheme.len;
+        var tmp_base_buf: [257]u8 = undefined;
+        const tmp_prefix = "http://";
+        @memcpy(tmp_base_buf[0..tmp_prefix.len], tmp_prefix);
+        @memcpy(tmp_base_buf[tmp_prefix.len..][0..slash_pos], without_scheme[0..slash_pos]);
+        tmp_base_buf[tmp_prefix.len + slash_pos] = 0;
+        temp_slot = c.uapi_connector_create(LIBRESPEED_SERVICE_ID,
+            @as([*:0]const u8, @ptrCast(&tmp_base_buf)));
+        if (temp_slot == 255) return error.ConnectorUnavailable;
+        slot = temp_slot;
+        own_slot = true;
+    }
+    defer if (own_slot) c.uapi_connector_destroy(temp_slot);
+
+    // Extract the path portion of the URL.
+    const without_scheme2 = if (std.mem.startsWith(u8, url, "http://"))
+        url[7..]
+    else
+        url;
+    const slash2 = std.mem.indexOfScalar(u8, without_scheme2, '/') orelse without_scheme2.len;
+    const path_raw = if (slash2 < without_scheme2.len)
+        without_scheme2[slash2..]
+    else
+        "/";
+
+    // Null-terminate the path for uapi_connector_call.
+    var path_nt: [512]u8 = undefined;
+    const path_len = @min(path_raw.len, 511);
+    @memcpy(path_nt[0..path_len], path_raw[0..path_len]);
+    path_nt[path_len] = 0;
+
+    // Empty body for GET.
+    const empty_body: [1]u8 = .{0};
+
+    const result_code = c.uapi_connector_call(
+        slot,
+        c.UAPI_METHOD_GET,
+        @as([*:0]const u8, @ptrCast(&path_nt)),
+        @as([*:0]const u8, @ptrCast(&empty_body)),
+        body_buf.ptr,
+        @intCast(body_buf.len),
+    );
+
+    if (result_code != c.UAPI_OK) {
+        std.debug.print("[aerie] librespeed: GET {s} failed (code {d})\n",
+            .{ url, result_code });
+        return error.ConnectorCallFailed;
+    }
+
+    // uapi_connector_call writes the response body starting at body_buf[0].
+    // Determine how many bytes were written by scanning for the null or the
+    // end of the buffer.
+    const written_len = std.mem.indexOfScalar(u8, body_buf, 0) orelse body_buf.len;
+    return body_buf[0..written_len];
 }
 
 fn unavailableSample(out: *t.TelemetrySample, ts: []const u8) void {
@@ -35,55 +173,6 @@ fn unavailableSample(out: *t.TelemetrySample, ts: []const u8) void {
     out.packet_loss = -1;
 }
 
-/// HTTP GET helper: fetches `url`, writes body into `body_buf`.
-/// Returns a slice of `body_buf` on success, error on failure.
-pub fn httpGet(url: []const u8, body_buf: []u8) ![]const u8 {
-    // Parse scheme, host, port, path from url.
-    const without_scheme = if (std.mem.startsWith(u8, url, "http://"))
-        url[7..]
-    else
-        return error.UnsupportedScheme;
-
-    const slash = std.mem.indexOfScalar(u8, without_scheme, '/') orelse without_scheme.len;
-    const host_port = without_scheme[0..slash];
-    const path: []const u8 = if (slash < without_scheme.len) without_scheme[slash..] else "/";
-
-    var host_buf: [128]u8 = undefined;
-    var port: u16 = 80;
-    if (std.mem.indexOfScalar(u8, host_port, ':')) |ci| {
-        const h = host_port[0..ci];
-        @memcpy(host_buf[0..h.len], h);
-        host_buf[h.len] = 0;
-        port = std.fmt.parseInt(u16, host_port[ci + 1 ..], 10) catch 80;
-    } else {
-        @memcpy(host_buf[0..host_port.len], host_port);
-        host_buf[host_port.len] = 0;
-    }
-    const host_str = host_buf[0..host_port.len];
-
-    const addr = std.net.Address.resolveIp(host_str, port) catch
-        try std.net.Address.parseIp4(host_str, port);
-    const stream = try std.net.tcpConnectToAddress(addr);
-    defer stream.close();
-
-    // Send HTTP/1.0 request (no keep-alive, simpler response handling)
-    var req_buf: [512]u8 = undefined;
-    const req = try std.fmt.bufPrint(&req_buf,
-        "GET {s} HTTP/1.0\r\nHost: {s}\r\nConnection: close\r\n\r\n",
-        .{ path, host_str },
-    );
-    try stream.writeAll(req);
-
-    const n = stream.read(body_buf) catch return error.ReadFailed;
-    const raw = body_buf[0..n];
-
-    // Strip HTTP headers: find \r\n\r\n
-    if (std.mem.indexOf(u8, raw, "\r\n\r\n")) |hdr_end| {
-        return raw[hdr_end + 4 ..];
-    }
-    return raw;
-}
-
 /// Fetch current telemetry from LibreSpeed.
 /// Writes the sample into `out`. Falls back to -1 values on any error.
 pub fn getTelemetry(out: *t.TelemetrySample) void {
@@ -91,8 +180,7 @@ pub fn getTelemetry(out: *t.TelemetrySample) void {
     prf.formatRfc3339(&ts_buf);
     const ts = std.mem.sliceTo(&ts_buf, 0);
 
-    var url_buf: [256]u8 = undefined;
-    const base = getLibrespeedUrl(&url_buf);
+    const base = ensureBaseUrl();
 
     var full_url_buf: [512]u8 = undefined;
     const url = std.fmt.bufPrint(&full_url_buf, "{s}/backend/getIP.php", .{base})

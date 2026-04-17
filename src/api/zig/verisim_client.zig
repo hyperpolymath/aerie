@@ -8,12 +8,161 @@
 // Fire-and-forget: all errors are logged to stderr and swallowed. The gateway
 // never blocks on VerisimDB unavailability — Redis remains the primary log.
 //
+// Transport layer: uapi_connector_* (developer-ecosystem/zig-api) — replaces
+// the hand-rolled std.net.tcpConnectToAddress httpPost and the delegation to
+// librespeed_client.httpGet for fetches.  VerisimDB now has its own persistent
+// connector slot so its pool lifecycle is independent of librespeed.
+//
 // Replaces: verisim_client.v
 
 const std  = @import("std");
 const t    = @import("types.zig");
 const rc   = @import("redis_client.zig");
-const ls   = @import("librespeed_client.zig");
+
+/// C ABI imports from libzig_api.
+const c = @cImport({
+    @cInclude("zig_api.h");
+});
+
+// ---------------------------------------------------------------------------
+// Connector slot (lazily initialised, module-level)
+// ---------------------------------------------------------------------------
+
+/// UAPI_SERVICE_VERISIMDB is the canonical service-id for VerisimDB.
+const VERISIMDB_SERVICE_ID: u8 = c.UAPI_SERVICE_VERISIMDB;
+
+var connector_slot: u8 = 255;
+
+var base_url_buf: [256]u8 = undefined;
+var base_url_len: usize   = 0;
+var base_url_init: bool   = false;
+
+fn ensureBaseUrl() []const u8 {
+    if (base_url_init) return base_url_buf[0..base_url_len];
+    const def = "http://verisimdb:8084";
+    if (std.posix.getenv("VERISIMDB_URL")) |url| {
+        // Strip trailing slash
+        const stripped = if (std.mem.endsWith(u8, url, "/"))
+            url[0..url.len - 1]
+        else url;
+        const n = @min(stripped.len, base_url_buf.len - 1);
+        @memcpy(base_url_buf[0..n], stripped[0..n]);
+        base_url_buf[n] = 0;
+        base_url_len = n;
+    } else {
+        @memcpy(base_url_buf[0..def.len], def);
+        base_url_buf[def.len] = 0;
+        base_url_len = def.len;
+    }
+    base_url_init = true;
+    return base_url_buf[0..base_url_len];
+}
+
+fn ensureSlot() u8 {
+    if (connector_slot != 255) return connector_slot;
+    const url = ensureBaseUrl();
+    var url_nt: [257]u8 = undefined;
+    @memcpy(url_nt[0..url.len], url);
+    url_nt[url.len] = 0;
+    connector_slot = c.uapi_connector_create(VERISIMDB_SERVICE_ID,
+        @as([*:0]const u8, @ptrCast(&url_nt)));
+    if (connector_slot == 255) {
+        std.debug.print("[aerie] verisimdb: connector pool exhausted\n", .{});
+    }
+    return connector_slot;
+}
+
+// ---------------------------------------------------------------------------
+// httpPost — connector-backed POST helper
+//
+// Replaced: hand-rolled std.net.tcpConnectToAddress + HTTP/1.0 POST
+// Replacement: uapi_connector_call (UAPI_METHOD_POST)
+// ---------------------------------------------------------------------------
+
+/// HTTP POST: send `body` to `path`, ignore the response (fire-and-forget).
+fn httpPost(path: []const u8, body: []const u8) !void {
+    const slot = ensureSlot();
+    if (slot == 255) return error.ConnectorUnavailable;
+
+    var path_nt: [512]u8 = undefined;
+    const path_len = @min(path.len, 511);
+    @memcpy(path_nt[0..path_len], path[0..path_len]);
+    path_nt[path_len] = 0;
+
+    var body_nt: [8192]u8 = undefined;
+    const body_len = @min(body.len, 8191);
+    @memcpy(body_nt[0..body_len], body[0..body_len]);
+    body_nt[body_len] = 0;
+
+    // Discard response (fire-and-forget).
+    var discard: [256]u8 = undefined;
+
+    const result_code = c.uapi_connector_call(
+        slot,
+        c.UAPI_METHOD_POST,
+        @as([*:0]const u8, @ptrCast(&path_nt)),
+        @as([*:0]const u8, @ptrCast(&body_nt)),
+        &discard,
+        @intCast(discard.len),
+    );
+
+    if (result_code != c.UAPI_OK) {
+        return error.ConnectorCallFailed;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// httpGet — connector-backed GET helper
+//
+// Replaced: delegation to librespeed_client.httpGet (hand-rolled TCP)
+// Replacement: uapi_connector_call (UAPI_METHOD_GET) on verisimdb's own slot
+// ---------------------------------------------------------------------------
+
+fn httpGet(url: []const u8, body_buf: []u8) ![]const u8 {
+    const slot = ensureSlot();
+    if (slot == 255) return error.ConnectorUnavailable;
+
+    // Build path from the full URL.
+    const base = ensureBaseUrl();
+    const path_raw: []const u8 = if (std.mem.startsWith(u8, url, base))
+        url[base.len..]
+    else blk: {
+        // URL uses a different base; extract path portion.
+        const without_scheme = if (std.mem.startsWith(u8, url, "http://"))
+            url[7..]
+        else
+            return error.UnsupportedScheme;
+        const slash = std.mem.indexOfScalar(u8, without_scheme, '/') orelse without_scheme.len;
+        break :blk if (slash < without_scheme.len) without_scheme[slash..] else "/";
+    };
+
+    var path_nt: [512]u8 = undefined;
+    const path_len = @min(path_raw.len, 511);
+    @memcpy(path_nt[0..path_len], path_raw[0..path_len]);
+    path_nt[path_len] = 0;
+
+    const empty_body: [1]u8 = .{0};
+
+    const result_code = c.uapi_connector_call(
+        slot,
+        c.UAPI_METHOD_GET,
+        @as([*:0]const u8, @ptrCast(&path_nt)),
+        @as([*:0]const u8, @ptrCast(&empty_body)),
+        body_buf.ptr,
+        @intCast(body_buf.len),
+    );
+
+    if (result_code != c.UAPI_OK) {
+        return error.ConnectorCallFailed;
+    }
+
+    const written_len = std.mem.indexOfScalar(u8, body_buf, 0) orelse body_buf.len;
+    return body_buf[0..written_len];
+}
+
+// ---------------------------------------------------------------------------
+// Public helpers
+// ---------------------------------------------------------------------------
 
 /// Serialise an AuditEvent to JSON. Shared with redis_client and verisim_client.
 pub fn auditEventToJson(ev: t.AuditEvent, buf: []u8) ![]const u8 {
@@ -51,25 +200,13 @@ pub const VerisimDBClient = struct {
 
     /// Build from VERISIMDB_URL env var (default http://verisimdb:8084).
     pub fn init() VerisimDBClient {
-        var c: VerisimDBClient = std.mem.zeroes(VerisimDBClient);
-        const def = "http://verisimdb:8084";
-        var url: []const u8 = def;
-        var local_buf: [256]u8 = undefined;
-        if (std.posix.getenv("VERISIMDB_URL")) |env_url| {
-            // Strip trailing slash
-            const stripped = if (std.mem.endsWith(u8, env_url, "/"))
-                env_url[0..env_url.len - 1]
-            else env_url;
-            const n = @min(stripped.len, 255);
-            @memcpy(local_buf[0..n], stripped[0..n]);
-            local_buf[n] = 0;
-            url = local_buf[0..n];
-        }
+        var cv: VerisimDBClient = std.mem.zeroes(VerisimDBClient);
+        const url = ensureBaseUrl();
         const n = @min(url.len, 255);
-        @memcpy(c.base_url[0..n], url[0..n]);
-        c.base_url[n]     = 0;
-        c.base_url_len    = n;
-        return c;
+        @memcpy(cv.base_url[0..n], url[0..n]);
+        cv.base_url[n]     = 0;
+        cv.base_url_len    = n;
+        return cv;
     }
 
     fn baseUrl(self: *const VerisimDBClient) []const u8 {
@@ -84,11 +221,7 @@ pub const VerisimDBClient = struct {
             return;
         };
 
-        var url_buf: [512]u8 = undefined;
-        const url = std.fmt.bufPrint(&url_buf, "{s}/api/v1/events", .{self.baseUrl()})
-            catch return;
-
-        httpPost(url, event_json) catch |err| {
+        httpPost("/api/v1/events", event_json) catch |err| {
             std.debug.print("[aerie] verisimdb: storeAudit failed ({s}): {s}\n",
                 .{ self.baseUrl(), @errorName(err) });
         };
@@ -151,7 +284,7 @@ fn fetchAndParse(
     arena:    std.mem.Allocator,
 ) void {
     var body_buf: [65536]u8 = undefined;
-    const body = ls.httpGet(url, &body_buf) catch |err| {
+    const body = httpGet(url, &body_buf) catch |err| {
         std.debug.print("[aerie] verisimdb: GET {s} failed: {s}\n",
             .{ url, @errorName(err) });
         return;
@@ -172,13 +305,13 @@ fn parseVerisimDBResponse(
     // Look for "events": [...]
     const events_needle = "\"events\"";
     const events_pos = std.mem.indexOf(u8, trimmed, events_needle) orelse {
-        // No "events" key — push the raw body as-is
+        // No "events" key — push the raw body as-is.
         const owned = arena.dupe(u8, trimmed) catch return;
         out_list.append(arena, owned) catch {};
         return;
     };
 
-    // Find the opening bracket after "events"
+    // Find the opening bracket after "events".
     const after = trimmed[events_pos + events_needle.len ..];
     const bracket_pos = std.mem.indexOfScalar(u8, after, '[') orelse {
         const owned = arena.dupe(u8, trimmed) catch return;
@@ -186,7 +319,7 @@ fn parseVerisimDBResponse(
         return;
     };
 
-    // Extract each {...} object from the array
+    // Extract each {...} object from the array.
     var pos: usize = bracket_pos + 1;
     const arr = after;
     while (pos < arr.len) {
@@ -215,48 +348,6 @@ fn findMatchingBrace(data: []const u8, start: usize) ?usize {
         i += 1;
     }
     return null;
-}
-
-/// HTTP POST: send `body` to `url`, ignore the response.
-fn httpPost(url: []const u8, body: []const u8) !void {
-    const without_scheme = if (std.mem.startsWith(u8, url, "http://"))
-        url[7..]
-    else
-        return error.UnsupportedScheme;
-
-    const slash = std.mem.indexOfScalar(u8, without_scheme, '/') orelse without_scheme.len;
-    const host_port = without_scheme[0..slash];
-    const path: []const u8 = if (slash < without_scheme.len) without_scheme[slash..] else "/";
-
-    var host_buf: [128]u8 = undefined;
-    var port: u16 = 80;
-    if (std.mem.indexOfScalar(u8, host_port, ':')) |ci| {
-        const h = host_port[0..ci];
-        @memcpy(host_buf[0..h.len], h);
-        host_buf[h.len] = 0;
-        port = std.fmt.parseInt(u16, host_port[ci + 1 ..], 10) catch 80;
-    } else {
-        @memcpy(host_buf[0..host_port.len], host_port);
-        host_buf[host_port.len] = 0;
-    }
-    const host_str = host_buf[0..host_port.len];
-
-    const addr = std.net.Address.resolveIp(host_str, port) catch
-        try std.net.Address.parseIp4(host_str, port);
-    const stream = try std.net.tcpConnectToAddress(addr);
-    defer stream.close();
-
-    var hdr_buf: [512]u8 = undefined;
-    const hdr = try std.fmt.bufPrint(&hdr_buf,
-        "POST {s} HTTP/1.0\r\nHost: {s}\r\nContent-Type: application/json\r\n" ++
-        "Content-Length: {d}\r\nConnection: close\r\n\r\n",
-        .{ path, host_str, body.len },
-    );
-    try stream.writeAll(hdr);
-    try stream.writeAll(body);
-    // Read and discard response
-    var discard: [256]u8 = undefined;
-    _ = stream.read(&discard) catch {};
 }
 
 /// Dual-log: write audit event to both Redis and VerisimDB.

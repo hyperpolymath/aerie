@@ -7,68 +7,120 @@
 // (default http://hyperglass:8082) for BGP route forensics data.
 // Falls back to an empty path on any error.
 //
+// Transport layer: uapi_connector_* (developer-ecosystem/zig-api) — replaces
+// the hand-rolled std.net.tcpConnectToAddress / HTTP/1.0 POST.
+// A single connector slot is lazily allocated on first use and reused for
+// subsequent requests.  The slot is released on process exit via the
+// library-level uapi_teardown() called in main.zig.
+//
 // Replaces: hyperglass_client.v
 
 const std  = @import("std");
 const t    = @import("types.zig");
-const ls   = @import("librespeed_client.zig");
 
-fn getHyperglassUrl(buf: []u8) []const u8 {
-    if (std.posix.getenv("HYPERGLASS_URL")) |url| {
-        const n = @min(url.len, buf.len - 1);
-        @memcpy(buf[0..n], url[0..n]);
-        buf[n] = 0;
-        return buf[0..n];
-    }
+/// C ABI imports from libzig_api.
+const c = @cImport({
+    @cInclude("zig_api.h");
+});
+
+// ---------------------------------------------------------------------------
+// Connector slot (lazily initialised, module-level)
+// ---------------------------------------------------------------------------
+
+const HYPERGLASS_SERVICE_ID: u8 = c.UAPI_SERVICE_AMBIENT_OPS;
+
+var connector_slot: u8 = 255;
+
+var base_url_buf: [256]u8 = undefined;
+var base_url_len: usize   = 0;
+var base_url_init: bool   = false;
+
+fn ensureBaseUrl() []const u8 {
+    if (base_url_init) return base_url_buf[0..base_url_len];
     const def = "http://hyperglass:8082";
-    @memcpy(buf[0..def.len], def);
-    return buf[0..def.len];
+    if (std.posix.getenv("HYPERGLASS_URL")) |url| {
+        const n = @min(url.len, base_url_buf.len - 1);
+        @memcpy(base_url_buf[0..n], url[0..n]);
+        base_url_buf[n] = 0;
+        base_url_len = n;
+    } else {
+        @memcpy(base_url_buf[0..def.len], def);
+        base_url_buf[def.len] = 0;
+        base_url_len = def.len;
+    }
+    base_url_init = true;
+    return base_url_buf[0..base_url_len];
 }
 
-/// HTTP POST helper: posts JSON body to `url`, writes response body into `body_buf`.
+fn ensureSlot() u8 {
+    if (connector_slot != 255) return connector_slot;
+    const url = ensureBaseUrl();
+    var url_nt: [257]u8 = undefined;
+    @memcpy(url_nt[0..url.len], url);
+    url_nt[url.len] = 0;
+    connector_slot = c.uapi_connector_create(HYPERGLASS_SERVICE_ID,
+        @as([*:0]const u8, @ptrCast(&url_nt)));
+    if (connector_slot == 255) {
+        std.debug.print("[aerie] hyperglass: connector pool exhausted\n", .{});
+    }
+    return connector_slot;
+}
+
+// ---------------------------------------------------------------------------
+// httpPost — connector-backed POST helper
+//
+// Replaced: hand-rolled std.net.tcpConnectToAddress + HTTP/1.0 POST write/read
+// Replacement: uapi_connector_call (UAPI_METHOD_POST)
+// ---------------------------------------------------------------------------
+
+/// HTTP POST helper: posts `post_body` to `url`, writes response body into
+/// `body_buf`.  Returns a slice of `body_buf` on success, or an error.
 fn httpPost(url: []const u8, post_body: []const u8, body_buf: []u8) ![]const u8 {
+    const slot = ensureSlot();
+    if (slot == 255) return error.ConnectorUnavailable;
+
+    // Extract the path from the URL.
     const without_scheme = if (std.mem.startsWith(u8, url, "http://"))
         url[7..]
     else
         return error.UnsupportedScheme;
-
     const slash = std.mem.indexOfScalar(u8, without_scheme, '/') orelse without_scheme.len;
-    const host_port = without_scheme[0..slash];
-    const path: []const u8 = if (slash < without_scheme.len) without_scheme[slash..] else "/";
+    const path_raw = if (slash < without_scheme.len)
+        without_scheme[slash..]
+    else
+        "/";
 
-    var host_buf: [128]u8 = undefined;
-    var port: u16 = 80;
-    if (std.mem.indexOfScalar(u8, host_port, ':')) |ci| {
-        const h = host_port[0..ci];
-        @memcpy(host_buf[0..h.len], h);
-        host_buf[h.len] = 0;
-        port = std.fmt.parseInt(u16, host_port[ci + 1 ..], 10) catch 80;
-    } else {
-        @memcpy(host_buf[0..host_port.len], host_port);
-        host_buf[host_port.len] = 0;
-    }
-    const host_str = host_buf[0..host_port.len];
+    var path_nt: [512]u8 = undefined;
+    const path_len = @min(path_raw.len, 511);
+    @memcpy(path_nt[0..path_len], path_raw[0..path_len]);
+    path_nt[path_len] = 0;
 
-    const addr = std.net.Address.resolveIp(host_str, port) catch
-        try std.net.Address.parseIp4(host_str, port);
-    const stream = try std.net.tcpConnectToAddress(addr);
-    defer stream.close();
+    // Null-terminate the body.
+    const body_nt = blk: {
+        var buf: [256]u8 = undefined;
+        const n = @min(post_body.len, 255);
+        @memcpy(buf[0..n], post_body[0..n]);
+        buf[n] = 0;
+        break :blk buf;
+    };
 
-    var req_buf: [1024]u8 = undefined;
-    const req_hdr = try std.fmt.bufPrint(&req_buf,
-        "POST {s} HTTP/1.0\r\nHost: {s}\r\nContent-Type: application/json\r\n" ++
-        "Content-Length: {d}\r\nConnection: close\r\n\r\n",
-        .{ path, host_str, post_body.len },
+    const result_code = c.uapi_connector_call(
+        slot,
+        c.UAPI_METHOD_POST,
+        @as([*:0]const u8, @ptrCast(&path_nt)),
+        @as([*:0]const u8, @ptrCast(&body_nt)),
+        body_buf.ptr,
+        @intCast(body_buf.len),
     );
-    try stream.writeAll(req_hdr);
-    try stream.writeAll(post_body);
 
-    const n = stream.read(body_buf) catch return error.ReadFailed;
-    const raw = body_buf[0..n];
-    if (std.mem.indexOf(u8, raw, "\r\n\r\n")) |hdr_end| {
-        return raw[hdr_end + 4 ..];
+    if (result_code != c.UAPI_OK) {
+        std.debug.print("[aerie] hyperglass: POST {s} failed (code {d})\n",
+            .{ url, result_code });
+        return error.ConnectorCallFailed;
     }
-    return raw;
+
+    const written_len = std.mem.indexOfScalar(u8, body_buf, 0) orelse body_buf.len;
+    return body_buf[0..written_len];
 }
 
 /// Max route hops we handle.
@@ -81,13 +133,12 @@ pub fn getRouteForensics(
     target:   []const u8,
     hops_out: *[MAX_HOPS]t.RouteHop,
 ) usize {
-    var url_buf:  [256]u8 = undefined;
-    const base = getHyperglassUrl(&url_buf);
+    const base = ensureBaseUrl();
 
     var full_url_buf: [512]u8 = undefined;
     const url = std.fmt.bufPrint(&full_url_buf, "{s}/api/query/", .{base}) catch return 0;
 
-    // Build POST body — sanitise target to prevent JSON injection
+    // Build POST body — sanitise target to prevent JSON injection.
     var post_buf: [256]u8 = undefined;
     const post_body = std.fmt.bufPrint(&post_buf,
         "{{\"query_location\":\"\",\"query_target\":\"{s}\",\"query_type\":\"bgp_route\"}}",
@@ -120,7 +171,7 @@ fn parseRouteHops(body: []const u8, hops: *[MAX_HOPS]t.RouteHop) usize {
         var hop: t.RouteHop = std.mem.zeroes(t.RouteHop);
         hop.hop = @intCast(count + 1);
 
-        // Try "prefix" then "ip" for the IP field
+        // Try "prefix" then "ip" for the IP field.
         if (jsonStrField(obj, "prefix")) |ip| {
             const n = @min(ip.len, 63);
             @memcpy(hop.ip[0..n], ip[0..n]);
@@ -133,7 +184,7 @@ fn parseRouteHops(body: []const u8, hops: *[MAX_HOPS]t.RouteHop) usize {
             hop.ip_len  = n;
         }
 
-        // Try "as_path" then "asn"
+        // Try "as_path" then "asn".
         if (jsonStrField(obj, "as_path")) |asn| {
             const n = @min(asn.len, 63);
             @memcpy(hop.asn[0..n], asn[0..n]);
@@ -152,8 +203,7 @@ fn parseRouteHops(body: []const u8, hops: *[MAX_HOPS]t.RouteHop) usize {
     return count;
 }
 
-/// Minimal JSON string field extractor: find `"key":"value"` and return the value slice.
-/// Returns null if key absent. Slice points into `data`.
+/// Minimal JSON string field extractor.
 fn jsonStrField(data: []const u8, key: []const u8) ?[]const u8 {
     var needle_buf: [64]u8 = undefined;
     const needle = std.fmt.bufPrint(&needle_buf, "\"{s}\"", .{key}) catch return null;

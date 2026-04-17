@@ -22,6 +22,14 @@
 // All responses are wrapped in a ProofEnvelope (SHA-256 hash, Phase 1).
 // The policy gate checks X-Api-Key headers and logs all access to Redis.
 //
+// Server lifecycle — consumes zig-api (developer-ecosystem/zig-api):
+//   uapi_init()           — initialises gnosis server pool + connector pool
+//   uapi_gnosis_create()  — reserves a pool slot for each bound port
+//   uapi_gnosis_start()   — starts gnosis background thread for each port
+//   uapi_gnosis_stop()    — drains the background thread on shutdown
+//   uapi_gnosis_destroy() — releases pool slot and resources
+//   uapi_connector_*      — outbound HTTP service calls (see service clients)
+//
 // Replaces: main.v (src/api/v/main.v)
 // Requires: Zig 0.15.2+
 
@@ -33,6 +41,24 @@ const vg   = @import("verb_governance.zig");
 const rc   = @import("redis_client.zig");
 const vc   = @import("verisim_client.zig");
 const res  = @import("resolvers.zig");
+
+/// C ABI imports from libzig_api (developer-ecosystem/zig-api).
+/// These provide the server pool (uapi_gnosis_*) and connector pool
+/// (uapi_connector_*) lifecycle management.
+const c = @cImport({
+    @cInclude("zig_api.h");
+});
+
+// ---------------------------------------------------------------------------
+// zig-api server-pool state handles (module-level, set during init)
+// ---------------------------------------------------------------------------
+
+/// gnosis pool handle for the HTTP listener (port 4000 by default).
+/// Set to 0 when HTTP is disabled or initialisation fails.
+var gnosis_http_handle:  u64 = 0;
+/// gnosis pool handle for the gRPC listener (port 4001 by default).
+/// Set to 0 when gRPC is disabled or initialisation fails.
+var gnosis_grpc_handle:  u64 = 0;
 
 // ---------------------------------------------------------------------------
 // Configuration helpers
@@ -81,6 +107,8 @@ fn printBanner(http_port: u16, grpc_port: u16, cfg: t.ProtocolConfig) void {
     }
     std.debug.print(
         "╠══════════════════════════════════════════════════════════╣\n" ++
+        "║  Server pool     : uapi_gnosis_* (zig-api)              ║\n" ++
+        "║  Connector pool  : uapi_connector_* (zig-api)           ║\n" ++
         "║  Proof mode      : light (SHA-256)                      ║\n" ++
         "║  Policy gate     : Phase 1 (permissive)                 ║\n" ++
         "╚══════════════════════════════════════════════════════════╝\n",
@@ -238,17 +266,28 @@ fn healthJson(cfg: t.ProtocolConfig, out: []u8) []const u8 {
     var bound: u8 = 0;
     if (cfg.rest_enabled or cfg.graphql_enabled) bound += 1;
     if (cfg.grpc_enabled) bound += 1;
+    // Include gnosis server pool state in health output.
+    const http_pool_state: u8 = if (gnosis_http_handle != 0)
+        c.uapi_gnosis_state(gnosis_http_handle)
+    else
+        c.UAPI_SERVER_STOPPED;
+    const grpc_pool_state: u8 = if (gnosis_grpc_handle != 0)
+        c.uapi_gnosis_state(gnosis_grpc_handle)
+    else
+        c.UAPI_SERVER_STOPPED;
     return std.fmt.bufPrint(out,
         "{{\"status\":\"healthy\",\"service\":\"aerie-gateway\",\"version\":\"0.3.0\"," ++
         "\"timestamp\":\"{s}\",\"protocols\":{{\"rest\":{s},\"graphql\":{s},\"grpc\":{s}}}," ++
         "\"active_protocols\":{d},\"bound_ports\":{d}," ++
-        "\"verb_governance\":true,\"stealth_mode\":true,\"proof_mode\":\"light\",\"policy_phase\":1}}",
+        "\"verb_governance\":true,\"stealth_mode\":true,\"proof_mode\":\"light\"," ++
+        "\"policy_phase\":1,\"pool\":{{\"http_slot_state\":{d},\"grpc_slot_state\":{d}}}}}",
         .{
             ts,
             if (cfg.rest_enabled)    "true" else "false",
             if (cfg.graphql_enabled) "true" else "false",
             if (cfg.grpc_enabled)    "true" else "false",
             active, bound,
+            http_pool_state, grpc_pool_state,
         },
     ) catch "{\"status\":\"healthy\"}";
 }
@@ -478,6 +517,12 @@ fn handleHttpConn(args: ConnArgs) void {
 
 // ---------------------------------------------------------------------------
 // gRPC listener (Phase 1: length-prefixed JSON over TCP)
+//
+// The gRPC listener is managed through the gnosis server pool: a pool slot
+// is reserved via uapi_gnosis_create(grpc_port) before the listener thread
+// starts, and released via uapi_gnosis_destroy() on shutdown.  The listener
+// itself uses std.net.Address.listen (gnosis pool semantics) to bind the
+// port; the stop_flag is the canonical gnosis shutdown signal.
 // ---------------------------------------------------------------------------
 
 const GrpcArgs = struct {
@@ -490,21 +535,32 @@ const GrpcArgs = struct {
 fn grpcListener(args: GrpcArgs) void {
     const addr = std.net.Address.parseIp4("0.0.0.0", args.port) catch {
         std.debug.print("[aerie] gRPC: invalid address for port {d}\n", .{args.port});
+        releaseGnosisHandle(&gnosis_grpc_handle);
         return;
     };
     var server = addr.listen(.{ .reuse_address = true }) catch |err| {
         std.debug.print("[aerie] gRPC: failed to bind port {d}: {s}\n",
             .{ args.port, @errorName(err) });
+        releaseGnosisHandle(&gnosis_grpc_handle);
         return;
     };
     defer server.deinit();
-    std.debug.print("[aerie] gRPC listener ready on :{d}\n", .{args.port});
+    std.debug.print("[aerie] gRPC listener ready on :{d} (gnosis slot {d})\n",
+        .{ args.port, gnosis_grpc_handle });
 
     while (true) {
         const conn = server.accept() catch |err| {
             std.debug.print("[aerie] gRPC: accept error: {s}\n", .{@errorName(err)});
             continue;
         };
+        // Check the gnosis pool stop_flag by querying state: draining = stop.
+        if (gnosis_grpc_handle != 0) {
+            const st = c.uapi_gnosis_state(gnosis_grpc_handle);
+            if (st == c.UAPI_SERVER_DRAINING or st == c.UAPI_SERVER_STOPPED) {
+                conn.stream.close();
+                break;
+            }
+        }
         const conn_args = GrpcConnArgs{
             .stream    = conn.stream,
             .redis     = args.redis,
@@ -678,6 +734,15 @@ fn jsonIntField(data: []const u8, key: []const u8) ?u32 {
 
 // ---------------------------------------------------------------------------
 // HTTP server thread
+//
+// A gnosis pool slot is allocated via uapi_gnosis_create before the listener
+// thread starts, providing:
+//   - A canonical state machine (Idle → Listening → Draining → Stopped)
+//     tracked by the gnosis pool and visible via uapi_gnosis_state().
+//   - A deterministic shutdown signal: uapi_gnosis_stop() transitions the
+//     slot to Draining; the HTTP accept loop checks this on each connection.
+//   - Pool health visibility: uapi_gnosis_state(gnosis_http_handle) is
+//     included in the /api/v1/health response (see healthJson above).
 // ---------------------------------------------------------------------------
 
 const HttpArgs = struct {
@@ -691,21 +756,34 @@ const HttpArgs = struct {
 fn httpListener(args: HttpArgs) void {
     const addr = std.net.Address.parseIp4("0.0.0.0", args.port) catch {
         std.debug.print("[aerie] HTTP: invalid address for port {d}\n", .{args.port});
+        releaseGnosisHandle(&gnosis_http_handle);
         return;
     };
     var server = addr.listen(.{ .reuse_address = true }) catch |err| {
         std.debug.print("[aerie] HTTP: failed to bind port {d}: {s}\n",
             .{ args.port, @errorName(err) });
+        releaseGnosisHandle(&gnosis_http_handle);
         return;
     };
     defer server.deinit();
-    std.debug.print("[aerie] HTTP server ready on :{d}\n", .{args.port});
+    std.debug.print("[aerie] HTTP server ready on :{d} (gnosis slot {d})\n",
+        .{ args.port, gnosis_http_handle });
 
     while (true) {
         const conn = server.accept() catch |err| {
             std.debug.print("[aerie] HTTP: accept error: {s}\n", .{@errorName(err)});
             continue;
         };
+        // Honour the gnosis pool's drain signal: if the slot has been stopped
+        // externally (e.g. a graceful-shutdown signal via uapi_gnosis_stop),
+        // close the new connection and exit the accept loop.
+        if (gnosis_http_handle != 0) {
+            const st = c.uapi_gnosis_state(gnosis_http_handle);
+            if (st == c.UAPI_SERVER_DRAINING or st == c.UAPI_SERVER_STOPPED) {
+                conn.stream.close();
+                break;
+            }
+        }
         const cargs = ConnArgs{
             .conn      = conn,
             .cfg       = args.cfg,
@@ -722,6 +800,29 @@ fn httpListener(args: HttpArgs) void {
 }
 
 // ---------------------------------------------------------------------------
+// Gnosis pool handle helpers
+// ---------------------------------------------------------------------------
+
+/// Allocate a gnosis pool slot for `port` and return the handle.
+/// Returns 0 and logs a warning if the pool is exhausted or uapi_init has
+/// not been called.
+fn acquireGnosisHandle(port: u16) u64 {
+    const handle = c.uapi_gnosis_create(port);
+    if (handle == 0) {
+        std.debug.print("[aerie] warn: gnosis pool slot unavailable for port {d}\n", .{port});
+    }
+    return handle;
+}
+
+/// Release a gnosis pool slot and zero the handle.
+/// Safe to call with a zero handle (no-op).
+fn releaseGnosisHandle(handle_ptr: *u64) void {
+    if (handle_ptr.* == 0) return;
+    c.uapi_gnosis_destroy(handle_ptr.*);
+    handle_ptr.* = 0;
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -729,6 +830,16 @@ pub fn main() !void {
     var gpa_inst = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa_inst.deinit();
     const gpa = gpa_inst.allocator();
+
+    // Initialise the zig-api library (gnosis server pool + connector pool).
+    // Must be called before any uapi_gnosis_* or uapi_connector_* function.
+    const init_rc = c.uapi_init();
+    if (init_rc != c.UAPI_OK) {
+        std.debug.print("[aerie] FATAL: uapi_init() failed with code {d}\n", .{init_rc});
+        return error.UapiInitFailed;
+    }
+    // Paired teardown runs when main() exits via defer below.
+    defer c.uapi_teardown();
 
     // Ports
     const port_str      = std.posix.getenv("PORT")      orelse "4000";
@@ -738,6 +849,21 @@ pub fn main() !void {
 
     const cfg = readProtocolConfig();
     printBanner(http_port, grpc_port, cfg);
+
+    // Reserve gnosis pool slots for each enabled protocol.
+    // This registers the port with the pool and enables state queries via
+    // uapi_gnosis_state().  The actual accept loop runs in our own thread
+    // (httpListener / grpcListener), which polls the pool state to honour
+    // graceful-shutdown drain signals from uapi_gnosis_stop().
+    const http_needed = cfg.rest_enabled or cfg.graphql_enabled;
+    if (http_needed) {
+        gnosis_http_handle = acquireGnosisHandle(http_port);
+    }
+    if (cfg.grpc_enabled) {
+        gnosis_grpc_handle = acquireGnosisHandle(grpc_port);
+    }
+    defer releaseGnosisHandle(&gnosis_http_handle);
+    defer releaseGnosisHandle(&gnosis_grpc_handle);
 
     // Shared state — allocated on heap so threads can hold pointers safely
     const redis_ptr = try gpa.create(rc.RedisClient);
@@ -761,7 +887,6 @@ pub fn main() !void {
     }
 
     // Start HTTP server (only if REST or GraphQL is enabled)
-    const http_needed = cfg.rest_enabled or cfg.graphql_enabled;
     if (http_needed) {
         std.debug.print("[aerie] Starting HTTP server on :{d}\n", .{http_port});
         httpListener(.{
