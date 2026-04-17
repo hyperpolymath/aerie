@@ -7,9 +7,3 @@ project = "aerie"
 author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
 license = "PMPL-1.0-or-later"
 standard = "RSR 2026"
-
-[api-gateway]
-language = "Zig"
-location = "src/api/zig/"
-binary = "aerie-gateway"
-note = "V-lang port complete 2026-04-17; src/api/v/ sidelined, deletion pending verification"

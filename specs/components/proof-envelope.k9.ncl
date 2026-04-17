@@ -43,7 +43,7 @@ let component_pedigree = pedigree.K9Pedigree {
     },
 
     full = {
-      includes = ["result_hash", "policy_hash", "query_id", "issued_at", "signature", "a2ml_attestation", "vql_proof"],
+      includes = ["result_hash", "policy_hash", "query_id", "issued_at", "signature", "a2ml_attestation", "vcl_proof"],
       suitable_for = ["audit", "forensics"],
     },
   },
