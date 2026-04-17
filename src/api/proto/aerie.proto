@@ -15,7 +15,7 @@ message ProofEnvelope {
   string proof_type = 5; // "light" | "full"
   string signature = 6;
   google.protobuf.Value a2ml_attestation = 7;
-  google.protobuf.Value vql_proof = 8;
+  google.protobuf.Value vcl_proof = 8;
 }
 
 // --- Data Types ---
