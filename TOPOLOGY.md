@@ -81,7 +81,7 @@
                         ┌─────────────────────────────────────────┐
                         │          REPO INFRASTRUCTURE            │
                         │  .bot_directives/   .github/workflows/  │
-                        │  contractiles/      justfile            │
+                        │  contractiles/      Justfile            │
                         │  .machine_readable/ (STATE.scm)         │
                         └─────────────────────────────────────────┘
 ```
