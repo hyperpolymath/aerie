@@ -34,7 +34,7 @@ cache = true
 [layers.build]
 description = "aerie build"
 extends = "toolchain"
-commands = ["apk add --no-cache \", "git clone --depth 1 https://github.com/vlang/v.git && \", "v -prod -cc gcc -cflags '-static' -o /app/aerie-gateway src/api/v/main.v"]
+commands = ["apk add --no-cache zig git", "zig build -Doptimize=ReleaseSafe", "cp zig-out/bin/aerie-gateway /app/aerie-gateway"]
 
 [layers.runtime]
 description = "Minimal runtime"

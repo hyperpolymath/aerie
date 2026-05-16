@@ -18,7 +18,7 @@
                         └───────────────────┬─────────────────────┘
                                             │
                     ┌───────────────────────────────────────────────┐
-                    │           AERIE GATEWAY (V-lang)              │
+                    │           AERIE GATEWAY (Zig)                 │
                     │                                               │
                     │  ┌──────────┐  ┌──────────┐  ┌────────────┐ │
                     │  │ GraphQL  │  │   REST   │  │    gRPC    │ │
@@ -92,7 +92,7 @@
 COMPONENT                          STATUS              NOTES
 ─────────────────────────────────  ──────────────────  ─────────────────────────────────
 API GATEWAY (Phase 1 ✓)
-  Gateway Server (V-lang)          ██████████ 100%    Triple-mount: GraphQL+gRPC+REST
+  Gateway Server (Zig)             ██████████ 100%    Triple-mount: GraphQL+gRPC+REST
   Policy Gate                      ██████░░░░  60%    Phase 1 permissive, Phase 2 entitlements
   Proof Envelope                   ██████████ 100%    SHA-256 light mode active
   LibreSpeed Client                ██████████ 100%    HTTP client wired

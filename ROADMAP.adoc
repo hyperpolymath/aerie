@@ -20,7 +20,7 @@
 
 === Phase 1 Implementation Details
 
-* **Gateway** (V-lang): `src/api/v/main.v` — HTTP on port 4000, gRPC on port 4001
+* **Gateway** (Zig, Idris2 ABI): `src/api/zig/main.zig` — HTTP on port 4000, gRPC on port 4001
 * **Proof envelopes**: SHA-256 hash-based ("light" mode) on all responses
 * **Policy gate**: Phase 1 permissive — all requests allowed, API keys validated and logged
 * **Service clients**: LibreSpeed (telemetry), Hyperglass (BGP routes), Redis (cache + audit)

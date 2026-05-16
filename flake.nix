@@ -20,10 +20,9 @@
 
         # *REMINDER: Define build dependencies*
         buildInputs = with pkgs; [
-          # Language-specific dependencies:
-          # gnat13  # Ada
-          # cargo rustc  # Rust
-          # elixir  # Elixir
+          # Estate architecture law: ABI = Idris2, API + FFI = Zig.
+          idris2  # ABI (src/abi/)
+          zig     # API gateway (src/api/zig/) + FFI (ffi/zig/)
           # For build tools:
           just
           podman
@@ -72,17 +71,13 @@
           inherit buildInputs nativeBuildInputs;
 
           buildPhase = ''
-            # *REMINDER: Add build commands*
-            # For Rust: cargo build --release
-            # For Elixir: mix compile
-            # For Ada: gprbuild -P aerie.gpr -XMODE=release
+            # Estate architecture law: ABI = Idris2, API + FFI = Zig.
+            zig build -Doptimize=ReleaseSafe
           '';
 
           installPhase = ''
             mkdir -p $out/bin
-            # *REMINDER: Add install commands*
-            # cp target/release/aerie $out/bin/  # Rust
-            # cp bin/aerie $out/bin/  # Ada
+            cp zig-out/bin/aerie-gateway $out/bin/
           '';
 
           meta = with pkgs.lib; {

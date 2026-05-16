@@ -1,57 +1,62 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-= Aerie — V-lang Deprecated (2026-04-12)
+= Aerie — V-lang Removed (deprecated 2026-04-12, removed 2026-05-16)
 :toc:
 
 == Status
 
-The V-lang implementation in `src/api/v/` is *deprecated* as of 2026-04-12
-following the estate-wide V-lang ban (2026-04-10).
+The V-lang implementation in `src/api/v/` is *removed* as of 2026-05-16
+(deprecated 2026-04-12 following the estate-wide V-lang ban of 2026-04-10).
 
-== Migration Target: Rust
+Per the day-1 estate architecture law (ABI = Idris2, FFI = Zig, API = Zig),
+the canonical implementation is the **Zig** gateway at `src/api/zig/`, built
+by the repository's root `build.zig` (binary `aerie-gateway`). The
+Containerfile and `stapeln.toml` build that Zig binary; no V toolchain is
+fetched or used anywhere in this repo.
 
-The canonical Rust rewrite is at `src/api/rust/` in this directory.
+NOTE: the `src/api/rust/` crate and the earlier "Migration Target: Rust"
+text in this document are *off-policy drift* — Rust is not an API language
+in this estate. That crate is debt to be removed; it is NOT the migration
+target. Retained below only as a historical module-name reference.
 
-[source,toml]
-----
-# aerie/Cargo.toml workspace already includes this crate:
-# "src/api/rust"
-----
+== Migration Target: Zig
+
+Canonical: `src/api/zig/` (Idris2 ABI in `src/abi/`, Zig FFI in `ffi/zig/`).
 
 === Module Map
 
 [cols="1,1"]
 |===
-| V module (deprecated) | Rust module
+| V module (removed) | Zig module
 
-| `src/api/v/main.v`              | `src/api/rust/src/main.rs`
-| `src/api/v/policy.v`            | `src/api/rust/src/policy.rs`
-| `src/api/v/proof.v`             | `src/api/rust/src/proof.rs`
-| `src/api/v/redis_client.v`      | `src/api/rust/src/redis_client.rs`
-| `src/api/v/verb_governance.v`   | `src/api/rust/src/verb_governance.rs`
-| `src/api/v/resolvers.v`         | `src/api/rust/src/resolvers.rs`
-| `src/api/v/librespeed_client.v` | `src/api/rust/src/backends.rs` (LibreSpeedClient)
-| `src/api/v/hyperglass_client.v` | `src/api/rust/src/backends.rs` (HyperglassClient)
-| `src/api/v/smokeping_client.v`  | `src/api/rust/src/backends.rs` (SmokePingClient)
-| `src/api/v/verisim_client.v`    | `src/api/rust/src/backends.rs` (VerisimDbClient)
+| `src/api/v/main.v`              | `src/api/zig/main.zig`
+| `src/api/v/policy.v`            | `src/api/zig/policy.zig`
+| `src/api/v/proof.v`             | `src/api/zig/proof.zig`
+| `src/api/v/redis_client.v`      | `src/api/zig/redis_client.zig`
+| `src/api/v/verb_governance.v`   | `src/api/zig/verb_governance.zig`
+| `src/api/v/resolvers.v`         | `src/api/zig/resolvers.zig`
+| `src/api/v/librespeed_client.v` | `src/api/zig/librespeed_client.zig`
+| `src/api/v/hyperglass_client.v` | `src/api/zig/hyperglass_client.zig`
+| `src/api/v/smokeping_client.v`  | `src/api/zig/smokeping_client.zig`
+| `src/api/v/verisim_client.v`    | `src/api/zig/verisim_client.zig`
 |===
 
 == Build and Run
 
 [source,bash]
 ----
-# From aerie/ root
-cargo build -p aerie-api
-cargo test  -p aerie-api
+# From aerie/ root (Idris2 ABI + Zig API/FFI)
+zig build -Doptimize=ReleaseSafe
+zig build test
 
 # Run (all mounts enabled, default ports)
-./target/debug/aerie-api
+./zig-out/bin/aerie-gateway
 
 # Disable gRPC mount
-ENABLE_GRPC=false ./target/debug/aerie-api
+ENABLE_GRPC=false ./zig-out/bin/aerie-gateway
 
 # Custom ports
-AERIE_PORT=8080 AERIE_GRPC_PORT=8081 ./target/debug/aerie-api
+AERIE_PORT=8080 AERIE_GRPC_PORT=8081 ./zig-out/bin/aerie-gateway
 
 # Configure backends
 LIBRESPEED_URL=http://localhost:8888  \
@@ -59,7 +64,7 @@ HYPERGLASS_URL=http://localhost:8001  \
 SMOKEPING_URL=http://localhost:8080   \
 REDIS_URL=redis://localhost:6379      \
 VERISIMDB_URL=http://localhost:8084   \
-./target/debug/aerie-api
+./zig-out/bin/aerie-gateway
 ----
 
 == Feature Parity
@@ -86,5 +91,7 @@ All V features are preserved:
 . Start backends (Redis, LibreSpeed, Hyperglass, SmokePing, VerisimDB) and run
   `./target/debug/aerie-api` against the container network.
 . Verify `GET /health`, `GET /api/v1/telemetry`, and `POST /api/v1/graphql` against a valid key.
-. Once confirmed healthy, delete `src/api/v/*.v`, `v.mod`, and `vpkg.json` (if present).
+. [DONE 2026-05-16] `src/api/v/`, `v.mod`, `vpkg.json`, and the V generated
+  stubs (`src/api/proto/aerie.pb.v`, `src/api/graphql/schema.gql.v`) removed;
+  Containerfile + `stapeln.toml` repointed to the Rust build.
 . Wire `aerie-api` binary into `compose.yml` to replace the V container.
