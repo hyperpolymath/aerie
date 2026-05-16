@@ -8,23 +8,32 @@ for tamper-evident responses, and a policy gate for access control.
 
 ## Architecture
 
+Estate architecture law (day 1, non-negotiable): **ABI = Idris2, FFI = Zig,
+API = Zig**. Never V-lang, Rust, or C for these layers.
+
 - **ABI**: Idris2 (`src/abi/`) — formal type definitions with proofs
 - **FFI**: Zig (`ffi/zig/`) — C-compatible implementation layer
-- **API Gateway**: V-lang (`src/api/v/`) — GraphQL + REST server on port 4000
+- **API Gateway**: Zig (`src/api/zig/`) — GraphQL + REST server on port 4000
 - **Probes**: LibreSpeed (speed), Hyperglass (BGP), SmokePing (jitter)
 - **Data**: Redis (cache/audit), VerisimDB (bitemporal, future)
 - **Container**: Podman Compose with Chainguard base images
+
+V-lang (`src/api/v/`) was removed 2026-05-16 (estate-wide V ban). The
+`src/api/rust/` crate and the old `MIGRATION.adoc` "→ Rust" text are
+off-policy drift — Rust is **not** an API language here; do not build,
+extend, or migrate to it. Canonical = the Zig gateway.
 
 ## Allowed Languages
 
 | Language | Use Case |
 |----------|----------|
-| **V-lang** | API gateway, HTTP server, service clients |
-| **Idris2** | ABI definitions, type proofs |
-| **Zig** | FFI implementation, C ABI bridge |
+| **Idris2** | ABI definitions, type proofs (`src/abi/`) |
+| **Zig** | API gateway, HTTP server, service clients, FFI / C ABI bridge |
 | **Nickel** | K9 spec assembly |
 | **Guile Scheme** | .machine_readable/6a2/STATE.a2ml, .machine_readable/6a2/META.a2ml, .machine_readable/6a2/ECOSYSTEM.a2ml |
 | **Bash** | Scripts, automation |
+
+Banned here: V-lang, Rust (for api/abi/ffi), TypeScript, Go, raw C.
 
 ## Build & Run
 
@@ -32,10 +41,11 @@ for tamper-evident responses, and a policy gate for access control.
 # Run all services (gateway + probes + redis)
 podman-compose up -d
 
-# Build gateway only
-v src/api/v/main.v -o aerie-gateway
+# Build gateway only (Idris2 ABI + Zig API/FFI)
+zig build -Doptimize=ReleaseSafe   # -> zig-out/bin/aerie-gateway
 
 # Run tests
+zig build test
 cd ffi/zig && zig build test
 cd ffi/zig && zig build test-integration
 ```

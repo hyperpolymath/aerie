@@ -2,7 +2,7 @@
 
 ## CRG Grade: C — ACHIEVED 2026-04-04
 
-**Project**: aerie (V-lang network diagnostic suite API)  
+**Project**: aerie (Zig network diagnostic suite API; Idris2 ABI)  
 **CRG Target**: C (comprehensive test coverage)  
 **Date**: 2026-04-04  
 **Status**: COMPLETE
@@ -256,16 +256,14 @@ Comprehensive test coverage for the aerie API gateway has been created, covering
    - Ready for `v test aerie_test.v` (requires test harness)
    - All assertions and properties explicitly coded
 
-### Notes on V Testing
+### Notes on Zig Testing
 
-The aerie codebase uses V-lang modules in `src/api/v/`. Test files need to:
-1. Be in same directory as modules OR
-2. Include proper imports/dependencies OR
-3. Run via `v test` with correct module resolution
-
-**Recommendation**: For next phase, integrate tests into V build pipeline:
+The aerie codebase uses Zig modules in `src/api/zig/` (Idris2 ABI in
+`src/abi/`, Zig FFI in `ffi/zig/`). V-lang was removed 2026-05-16. Tests
+run through the Zig build:
 ```bash
-v test src/api/v/  # Tests all modules with _test.v files
+zig build test          # API gateway unit tests (src/api/zig/)
+cd ffi/zig && zig build test test-integration
 ```
 
 ---
@@ -302,9 +300,9 @@ All requirements met:
 
 ## Next Steps (Phase 2+)
 
-1. **Integrate V test harness**
-   - Place `_test.v` files in `src/api/v/`
-   - Run via CI/CD: `v test src/api/v/`
+1. **Integrate Zig test harness**
+   - Place tests alongside `src/api/zig/` modules (Zig `test {}` blocks)
+   - Run via CI/CD: `zig build test`
 
 2. **Add Phase 2 tests**
    - Entitlement-based access control
