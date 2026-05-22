@@ -9,7 +9,7 @@ for tamper-evident responses, and a policy gate for access control.
 ## Architecture
 
 Estate architecture law (day 1, non-negotiable): **ABI = Idris2, FFI = Zig,
-API = Zig**. Never V-lang, Rust, or C for these layers.
+API = Zig**. Never Zig, Rust, or C for these layers.
 
 - **ABI**: Idris2 (`src/abi/`) — formal type definitions with proofs
 - **FFI**: Zig (`ffi/zig/`) — C-compatible implementation layer
@@ -18,7 +18,7 @@ API = Zig**. Never V-lang, Rust, or C for these layers.
 - **Data**: Redis (cache/audit), VerisimDB (bitemporal, future)
 - **Container**: Podman Compose with Chainguard base images
 
-V-lang (`src/api/v/`) was removed 2026-05-16 (estate-wide V ban). The
+Zig (`src/api/v/`) was removed 2026-05-16 (estate-wide V ban). The
 `src/api/rust/` crate and the old `MIGRATION.adoc` "→ Rust" text are
 off-policy drift — Rust is **not** an API language here; do not build,
 extend, or migrate to it. Canonical = the Zig gateway.
@@ -33,7 +33,7 @@ extend, or migrate to it. Canonical = the Zig gateway.
 | **Guile Scheme** | .machine_readable/6a2/STATE.a2ml, .machine_readable/6a2/META.a2ml, .machine_readable/6a2/ECOSYSTEM.a2ml |
 | **Bash** | Scripts, automation |
 
-Banned here: V-lang, Rust (for api/abi/ffi), TypeScript, Go, raw C.
+Banned here: Zig, Rust (for api/abi/ffi), TypeScript, Go, raw C.
 
 ## Build & Run
 
@@ -57,7 +57,7 @@ cd ffi/zig && zig build test-integration
 - GraphQL schema at `src/api/graphql/schema.graphql`
 - Protobuf definitions at `src/api/proto/aerie.proto`
 - SCM files ONLY in `.machine_readable/` directory
-- SPDX header: `PMPL-1.0-or-later` (never AGPL)
+- SPDX header: `MPL-2.0` (never AGPL)
 
 ## Service Ports
 

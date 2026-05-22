@@ -20,7 +20,7 @@ specs-verify:
 
 # --- API ---
 
-# No codegen: V-lang stub generation was removed with the V ban (2026-05-16).
+# No codegen: zig stub generation was removed with the V ban (2026-05-16).
 # The canonical API is the hand-written Zig gateway in src/api/zig/ (Idris2 ABI
 # in src/abi/). The .proto / .graphql schemas remain as the wire contract.
 

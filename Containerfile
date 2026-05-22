@@ -1,10 +1,10 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 #
 # Containerfile — Aerie Gateway (Triple-Mount API Server)
 #
 # Estate architecture law: ABI = Idris2 (src/abi/), API + FFI = Zig.
-#   The V-lang implementation (src/api/v/) was removed under the estate-wide
-#   V-lang ban (deprecated 2026-04-12, removed 2026-05-16). The canonical
+#   The zig implementation (src/api/v/) was removed under the estate-wide
+#   zig ban (deprecated 2026-04-12, removed 2026-05-16). The canonical
 #   implementation is the Zig gateway src/api/zig/ built by ./build.zig.
 #   (The src/api/rust/ crate and the old V→Rust MIGRATION.adoc are off-policy
 #    drift — Rust is not an API language here. Tracked separately for removal.)

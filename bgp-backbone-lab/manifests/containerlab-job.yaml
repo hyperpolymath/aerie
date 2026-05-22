@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # K8s Job to deploy the containerlab BGP topology
 apiVersion: batch/v1
 kind: Job

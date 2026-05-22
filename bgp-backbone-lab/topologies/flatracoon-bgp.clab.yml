@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # FlatRacoon BGP backbone lab - minimal 3-router eBGP topology
 # Spine + 2 leaf routers using FRRouting
 

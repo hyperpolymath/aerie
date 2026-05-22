@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Assemble Aerie specs from bottom-up K9 components (Yard level only).
 
 let policy = import "components/policy-entitlements.k9.ncl" in

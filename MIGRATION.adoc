@@ -1,12 +1,12 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-= Aerie — V-lang Removed (deprecated 2026-04-12, removed 2026-05-16)
+= Aerie — zig Removed (deprecated 2026-04-12, removed 2026-05-16)
 :toc:
 
 == Status
 
-The V-lang implementation in `src/api/v/` is *removed* as of 2026-05-16
-(deprecated 2026-04-12 following the estate-wide V-lang ban of 2026-04-10).
+The zig implementation in `src/api/v/` is *removed* as of 2026-05-16
+(deprecated 2026-04-12 following the estate-wide zig ban of 2026-04-10).
 
 Per the day-1 estate architecture law (ABI = Idris2, FFI = Zig, API = Zig),
 the canonical implementation is the **Zig** gateway at `src/api/zig/`, built

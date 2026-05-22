@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 #
 # Submodule declarations for embedded independent repos.
 # These directories have their own .git directories and are tracked as

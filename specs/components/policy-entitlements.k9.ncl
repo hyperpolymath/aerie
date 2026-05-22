@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Yard-level component: module entitlements + policy gates
 
 let pedigree = import "../k9/pedigree.ncl" in

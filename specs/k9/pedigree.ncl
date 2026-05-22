@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copied from k9-svc/pedigree.ncl for local Yard-level components.
 # Keep in sync with /var$REPOS_DIR/k9-svc/pedigree.ncl
 

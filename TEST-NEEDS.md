@@ -259,7 +259,7 @@ Comprehensive test coverage for the aerie API gateway has been created, covering
 ### Notes on Zig Testing
 
 The aerie codebase uses Zig modules in `src/api/zig/` (Idris2 ABI in
-`src/abi/`, Zig FFI in `ffi/zig/`). V-lang was removed 2026-05-16. Tests
+`src/abi/`, Zig FFI in `ffi/zig/`). zig was removed 2026-05-16. Tests
 run through the Zig build:
 ```bash
 zig build test          # API gateway unit tests (src/api/zig/)
@@ -329,4 +329,4 @@ All requirements met:
 Jonathan D.A. Jewell <6759885+hyperpolymath@users.noreply.github.com>
 
 ## SPDX License
-PMPL-1.0-or-later
+MPL-2.0

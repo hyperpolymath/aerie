@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // main.zig — Aerie Gateway: Single-Port Path-Routed API Server (Zig port)
@@ -90,7 +90,7 @@ fn readProtocolConfig() t.ProtocolConfig {
 fn printBanner(http_port: u16, cfg: t.ProtocolConfig) void {
     std.debug.print(
         "╔══════════════════════════════════════════════════════════╗\n" ++
-        "║   AERIE GATEWAY — Zig port (single-port, PMPL-1.0-or-later) ║\n" ++
+        "║   AERIE GATEWAY — Zig port (single-port, MPL-2.0) ║\n" ++
         "╠══════════════════════════════════════════════════════════╣\n",
         .{},
     );

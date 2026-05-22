@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT
 // Source: specs/components/*.k9.ncl
 // Regenerate: specs/tools/update_manifest.sh
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 = OSI Forensics Matrix
 :toc:
 :toclevels: 2

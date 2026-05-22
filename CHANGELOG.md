@@ -6,8 +6,8 @@ dd2c04a Auto-commit: Sync changes [2026-03-03]
 707d88f Fix stale submodule pointers after repo cleanup
 546c50c Auto-commit: Sync changes [2026-03-02]
 b2d2771 Customize RSR template references for aerie
-9afa42d Fix remaining AGPL license headers to PMPL-1.0-or-later
-272bfc8 fix: resolve V-lang 0.5.0 compilation errors for clean gateway build
+9afa42d Fix remaining AGPL license headers to MPL-2.0
+272bfc8 fix: resolve zig 0.5.0 compilation errors for clean gateway build
 9d67522 feat: Phase 2 — SmokePing integration + VerisimDB bitemporal audit
 df441dd fix: resolve orphaned gitlinks by adding .gitmodules and replace RSR template placeholders
 049cdfa docs: audit Block 1 immediate fixes and document submodule status
