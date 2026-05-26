@@ -1,0 +1,72 @@
+;; SPDX-License-Identifier: MPL-2.0
+;; Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+(assail-classifications
+  (metadata
+    (version "1.0.0")
+    (project "aerie")
+    (last-updated "2026-05-26")
+    (entries 10)
+    (status "active"))
+
+  (classification
+    (file "src/api/zig/main.zig")
+    (category "UnsafeCode")
+    (classification "legitimate-ffi")
+    (audit "audits/audit-ffi-2026-05-26.md")
+    (rationale "Zig FFI API layer (hyperglass/main). Each unsafe block is at the Zig→C ABI boundary required by the language to call extern functions."))
+  (classification
+    (file "src/api/zig/main.zig")
+    (category "UnsafeFFI")
+    (classification "legitimate-ffi")
+    (audit "audits/audit-ffi-2026-05-26.md")
+    (rationale "Zig FFI API layer (hyperglass/main). Each unsafe block is at the Zig→C ABI boundary required by the language to call extern functions."))
+  (classification
+    (file "src/api/zig/hyperglass_client.zig")
+    (category "UnsafeCode")
+    (classification "legitimate-ffi")
+    (audit "audits/audit-ffi-2026-05-26.md")
+    (rationale "Zig FFI API layer (hyperglass/main). Each unsafe block is at the Zig→C ABI boundary required by the language to call extern functions."))
+  (classification
+    (file "src/api/zig/hyperglass_client.zig")
+    (category "UnsafeFFI")
+    (classification "legitimate-ffi")
+    (audit "audits/audit-ffi-2026-05-26.md")
+    (rationale "Zig FFI API layer (hyperglass/main). Each unsafe block is at the Zig→C ABI boundary required by the language to call extern functions."))
+  (classification
+    (file "src/api/zig/smokeping_client.zig")
+    (category "UnsafeCode")
+    (classification "legitimate-ffi")
+    (audit "audits/audit-ffi-2026-05-26.md")
+    (rationale "Zig FFI API layer (hyperglass/main). Each unsafe block is at the Zig→C ABI boundary required by the language to call extern functions."))
+  (classification
+    (file "src/api/zig/smokeping_client.zig")
+    (category "UnsafeFFI")
+    (classification "legitimate-ffi")
+    (audit "audits/audit-ffi-2026-05-26.md")
+    (rationale "Zig FFI API layer (hyperglass/main). Each unsafe block is at the Zig→C ABI boundary required by the language to call extern functions."))
+  (classification
+    (file "src/api/zig/verisim_client.zig")
+    (category "UnsafeCode")
+    (classification "legitimate-ffi")
+    (audit "audits/audit-ffi-2026-05-26.md")
+    (rationale "Zig FFI API layer (hyperglass/main). Each unsafe block is at the Zig→C ABI boundary required by the language to call extern functions."))
+  (classification
+    (file "src/api/zig/verisim_client.zig")
+    (category "UnsafeFFI")
+    (classification "legitimate-ffi")
+    (audit "audits/audit-ffi-2026-05-26.md")
+    (rationale "Zig FFI API layer (hyperglass/main). Each unsafe block is at the Zig→C ABI boundary required by the language to call extern functions."))
+  (classification
+    (file "src/api/zig/librespeed_client.zig")
+    (category "UnsafeCode")
+    (classification "legitimate-ffi")
+    (audit "audits/audit-ffi-2026-05-26.md")
+    (rationale "Zig FFI API layer (hyperglass/main). Each unsafe block is at the Zig→C ABI boundary required by the language to call extern functions."))
+  (classification
+    (file "src/api/zig/librespeed_client.zig")
+    (category "UnsafeFFI")
+    (classification "legitimate-ffi")
+    (audit "audits/audit-ffi-2026-05-26.md")
+    (rationale "Zig FFI API layer (hyperglass/main). Each unsafe block is at the Zig→C ABI boundary required by the language to call extern functions."))
+)
