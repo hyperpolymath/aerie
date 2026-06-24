@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT
 // Source: specs/components/*.k9.ncl
 // Regenerate: specs/tools/update_manifest.sh
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 = Aerie GraphQL Schema Outline
 :toc:
 :toclevels: 2
