@@ -1,79 +1,91 @@
-[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github)](https://github.com/sponsors/hyperpolymath)
+<!--
+SPDX-License-Identifier: CC-BY-SA-4.0
+SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 
-// SPDX-License-Identifier: CC-BY-SA-4.0
-// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+[![OpenSSF Best Practices](https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity)](https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/aerie)
+[![License: PMPL-1.0](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](https://github.com/hyperpolymath/palimpsest-license) <embed
+src="https://api.thegreenwebfoundation.org/greencheckimage/github.com"
+data-link="https://www.thegreenwebfoundation.org/green-web-check/?url=github.com" />
 
-= Cyber-Focused Network Diagnostic Suite (CF-NDS)
-:author: Project Lead
-:status: Development
+# Purpose
 
-image:https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity[OpenSSF Best Practices,link="https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/aerie"]
-image:https://img.shields.io/badge/License-MPL--2.0-blue.svg[License: PMPL-1.0,link="https://github.com/hyperpolymath/palimpsest-license"]
-image:https://api.thegreenwebfoundation.org/greencheckimage/github.com[Green Web,link="https://www.thegreenwebfoundation.org/green-web-check/?url=github.com"]
+A high-assurance alternative to commercial speedtests. CF-NDS is
+designed to provide network engineers with the raw data required to
+diagnose routing interference, BGP hijacks, or ISP throttling without
+the privacy risks of third-party telemetry.
 
-== Purpose
+# Key Features
 
-A high-assurance alternative to commercial speedtests. CF-NDS is designed to provide network engineers with the raw data required to diagnose routing interference, BGP hijacks, or ISP throttling without the privacy risks of third-party telemetry.
+- Zero-telemetry speedtest: Powered by LibreSpeed, ensuring your
+  metadata is not sold.
 
-== Key Features
+- BGP path visibility: Integrated Hyperglass instance for real-time
+  routing forensics.
 
-* Zero-telemetry speedtest: Powered by LibreSpeed, ensuring your metadata is not sold.
-* BGP path visibility: Integrated Hyperglass instance for real-time routing forensics.
-* Jitter persistence: SmokePing implementation to visualise link degradation over weeks, not seconds.
-* Hardened access: Centralised behind a WAF with strict rate-limiting to prevent probe poisoning.
-* Dual passive/active forensics: Zeek/Suricata listening + Hyperglass/SmokePing/LibreSpeed probes for OSI-layer visibility.
-* Alerting with retention: Webhook/ntfy hooks plus bitemporal SmokePing history for policy-aware SOC response.
+- Jitter persistence: SmokePing implementation to visualise link
+  degradation over weeks, not seconds.
 
-== Architecture (Secure Stack)
+- Hardened access: Centralised behind a WAF with strict rate-limiting to
+  prevent probe poisoning.
 
-See link:TOPOLOGY.md[TOPOLOGY.md] for a visual architecture map and completion dashboard.
+- Dual passive/active forensics: Zeek/Suricata listening +
+  Hyperglass/SmokePing/LibreSpeed probes for OSI-layer visibility.
 
-* **Verification chain**: Cerro Torre (bundle verification) → Svalinn (policy gate) → Vörðr (orchestration) → selur (IPC).
-* **Data plane**: VerisimDB federation + VCL, ArangoDB for path/graph forensics, Dragonfly for realtime cache.
-* **API plane**: GraphQL gateway with module-based entitlements and proof envelopes on every response.
-* **Realtime**: WebSocket/SSE subscriptions (no RTSP) with per-module streams.
+- Alerting with retention: Webhook/ntfy hooks plus bitemporal SmokePing
+  history for policy-aware SOC response.
 
-== Specs (K9 SVC)
+# Architecture (Secure Stack)
 
-See `specs/` for the bottom-up K9 components and rendered AsciiDoc outputs, including:
+See <a href="TOPOLOGY.md" class="md">TOPOLOGY</a> for a visual
+architecture map and completion dashboard.
 
-* `active-probe.adoc` – the Hyperglass/SmokePing/LibreSpeed HUD modules.
-* `alerting-retention.adoc` – webhook/ntfy triggers plus SmokePing retention tiers into VerisimDB.
-* `known-limitations.adoc` – guardrails for relative binds, secrets, automation throttles, and regen mechanics.
+- **Verification chain**: Cerro Torre (bundle verification) → Svalinn
+  (policy gate) → Vörðr (orchestration) → selur (IPC).
 
-== Front-End Visual Layout
+- **Data plane**: VerisimDB federation + VCL, ArangoDB for path/graph
+  forensics, Dragonfly for realtime cache.
 
-A high-density, SOC-style dashboard: a dark-mode forensics portal built on Dashy or Heimdall. Unlike a standard speedtest that provides one large number, this is a multi-widget HUD for rapid network triage.
+- **API plane**: GraphQL gateway with module-based entitlements and
+  proof envelopes on every response.
 
-[cols="1,2,2",options="header"]
-|===
-| Region | Component | Visual elements
+- **Realtime**: WebSocket/SSE subscriptions (no RTSP) with per-module
+  streams.
 
-| Header
-| Global status
-| Real-time traffic-light system for ISP health and WAF status.
+# Specs (K9 SVC)
 
-| Left rail
-| Toolbox
-| Quick-launch icons for Hyperglass (MTR), SmokePing, and Nmap.
+See `specs/` for the bottom-up K9 components and rendered AsciiDoc
+outputs, including:
 
-| Centre deck
-| Speed telemetry
-| Minimalist LibreSpeed widget (no ads, no tracking) showing up/down/jitter.
+- `active-probe.adoc` – the Hyperglass/SmokePing/LibreSpeed HUD modules.
 
-| Right rail
-| Path analysis
-| Live looking-glass output showing the current BGP path to your edge.
+- `alerting-retention.adoc` – webhook/ntfy triggers plus SmokePing
+  retention tiers into VerisimDB.
 
-| Footer
-| Audit log
-| Chronological feed of network anomalies or WAF-blocked reconnaissance.
-|===
+- `known-limitations.adoc` – guardrails for relative binds, secrets,
+  automation throttles, and regen mechanics.
 
-== Security Note
+# Front-End Visual Layout
 
-This suite is intended for private deployment. Public exposure without the Phase 3 hardening (WAF/mTLS) is strictly discouraged to prevent external actors from mapping your internal routing.
+A high-density, SOC-style dashboard: a dark-mode forensics portal built
+on Dashy or Heimdall. Unlike a standard speedtest that provides one
+large number, this is a multi-widget HUD for rapid network triage.
 
-== Standards
+| Region | Component | Visual elements |
+|----|----|----|
+| Header | Global status | Real-time traffic-light system for ISP health and WAF status. |
+| Left rail | Toolbox | Quick-launch icons for Hyperglass (MTR), SmokePing, and Nmap. |
+| Centre deck | Speed telemetry | Minimalist LibreSpeed widget (no ads, no tracking) showing up/down/jitter. |
+| Right rail | Path analysis | Live looking-glass output showing the current BGP path to your edge. |
+| Footer | Audit log | Chronological feed of network anomalies or WAF-blocked reconnaissance. |
 
-This programme's documentation and dialogue are maintained in Oxford British English.
+# Security Note
+
+This suite is intended for private deployment. Public exposure without
+the Phase 3 hardening (WAF/mTLS) is strictly discouraged to prevent
+external actors from mapping your internal routing.
+
+# Standards
+
+This programme’s documentation and dialogue are maintained in Oxford
+British English.
