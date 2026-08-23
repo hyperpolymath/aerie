@@ -41,7 +41,7 @@ This library follows the **Hyperpolymath RSR Standard** for ABI and FFI design:
                   ▼
 ┌─────────────────────────────────────────────┐
 │  Any Language via C ABI                     │
-│  - Rust, ReScript, Julia, Python, etc.     │
+│  - Rust, AffineScript, Julia, Python, etc.     │
 └─────────────────────────────────────────────┘
 ```
 
@@ -73,7 +73,7 @@ aerie/
 │
 └── bindings/                   # Language-specific wrappers (optional)
     ├── rust/
-    ├── rescript/
+    ├── affinescript/
     └── julia/
 ```
 
