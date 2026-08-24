@@ -1,6 +1,0 @@
-{
-  "tasks": {
-    "build": "deno task build-res",
-    "build-res": "deno run -A npm:rescript"
-  }
-}

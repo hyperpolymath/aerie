@@ -29,7 +29,7 @@
 - eval usage in qubes-sdp/tests/security-tests.sh
 - eval usage in qubes-sdp/tests/unit-tests.sh
 - Hardcoded /tmp/ path without mktemp in qubes-sdp/tools/qubes-policy-generator.sh
-- flake.nix declares inputs without narHash, rev pinning, or sibling flake.lock — dependency revision is unpinned in flake.nix
+- flake.guix declares inputs without narHash, rev pinning, or sibling flake.lock — dependency revision is unpinned in flake.guix
 - 23 potentially unquoted variable expansions in aerie-launcher.sh
 - Hardcoded /tmp/ path without mktemp in aerie-launcher.sh
 - Rust project has test infrastructure but no mutation-test configuration (cargo-mutants/.cargo-mutants.toml) — add `cargo mutants` to verify test suite kills mutations
