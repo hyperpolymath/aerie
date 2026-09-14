@@ -1,3 +1,4 @@
+K9!
 # SPDX-License-Identifier: MPL-2.0
 # Assemble Aerie specs from bottom-up K9 components (Yard level only).
 
@@ -18,6 +19,17 @@ let alerts = import "components/alerting-retention.k9.ncl" in
 let limitations = import "components/known-limitations.k9.ncl" in
 
 {
+  pedigree = {
+    schema_version = "1.0.0",
+    security = {
+      leash = 'Yard,
+    },
+    metadata = {
+      name = "aerie-spec-assembly",
+      version = "1.0.0-alpha",
+    },
+  },
+
   components = {
     policy = policy,
     graphql = graphql,

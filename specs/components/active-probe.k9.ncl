@@ -1,9 +1,11 @@
+K9!
 # SPDX-License-Identifier: MPL-2.0
 # Yard-level component: Active protocol probe stack + dashboard staging
 
-let pedigree = import "../k9/pedigree.ncl" in
+let pedigree_schema = import "../k9/pedigree.ncl" in
 
-let component_pedigree = pedigree.K9Pedigree {
+let
+  pedigree = pedigree_schema.K9Pedigree {
   metadata = {
     name = "aerie-active-probe",
     version = "1.0.0-alpha",
@@ -22,7 +24,7 @@ let component_pedigree = pedigree.K9Pedigree {
 } in
 
 {
-  pedigree = component_pedigree,
+  pedigree = pedigree,
 
   active_probe = {
     purpose = "Inject deliberate probes so the HUD contrasts passive listening with reachable endpoints.",
