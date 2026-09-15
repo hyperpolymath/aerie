@@ -1,9 +1,11 @@
+K9!
 # SPDX-License-Identifier: MPL-2.0
 # Yard-level component: Alerting + temporal retention for CF-NDS telemetry
 
-let pedigree = import "../k9/pedigree.ncl" in
+let pedigree_schema = import "../k9/pedigree.ncl" in
 
-let component_pedigree = pedigree.K9Pedigree {
+let
+  pedigree = pedigree_schema.K9Pedigree {
   metadata = {
     name = "aerie-alerting-retention",
     version = "1.0.0-alpha",
@@ -22,7 +24,7 @@ let component_pedigree = pedigree.K9Pedigree {
 } in
 
 {
-  pedigree = component_pedigree,
+  pedigree = pedigree,
 
   telemetry = {
     primary_store = "SmokePing",
