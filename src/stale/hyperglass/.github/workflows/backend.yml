@@ -29,12 +29,12 @@ jobs:
                     sudo apt-get install -y libcairo2-dev pkg-config python3-dev
 
             - name: Install Python
-              uses: actions/setup-python@v5
+              uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
               with:
                   python-version: ${{ matrix.python-version }}
 
             - name: Setup Rye
-              uses: sksat/setup-rye@v0.23.1
+              uses: sksat/setup-rye@f0306b366159a10689205f9090fc9f231e5f1649  # v0.23.1
 
             - name: Install Node
               uses: actions/setup-node@49933ea5288caeca8642195f2b846b8bbe245a93 # v4
@@ -42,12 +42,12 @@ jobs:
                   node-version: ${{ matrix.node-version }}
 
             - name: Install PNPM
-              uses: pnpm/action-setup@v3
+              uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d  # v3
               with:
                   version: ${{ matrix.pnpm-version }}
 
             - name: Start Redis
-              uses: supercharge/redis-github-action@1.7.0
+              uses: supercharge/redis-github-action@6dc7a5eeaf9a8f860b6464e05195a15f8b9f3bbb  # 1.7.0
               with:
                   redis-version: ${{ matrix.redis-version }}
 
