@@ -1,6 +1,6 @@
 = Roadmap: Advanced Network Forensics Suite
-:revnumber: 1.4
-:revdate: 2026-02-01
+:revnumber: 2.0
+:revdate: 2026-09-23
 
 == Phase 0: Spec & Governance Foundation
 
@@ -82,3 +82,111 @@
 [ ] **Historical Network "Time Machine":** Implement a "Time Travel" mode in the UI, allowing the user to view the entire dashboard's state at any specific point in the past.
 [ ] **SCADA/OT Network Monitoring Mode:** A "Passive-Only" mode that disables all active probes to allow for safe deployment in sensitive industrial environments.
 [ ] **Post-Quantum Cryptography for Agents:** Use PQC algorithms (e.g., Kyber/Dilithium) for securing communication between the central Aerie instance and its distributed probes.
+
+== Phase 7: Repository Remediation & Perfection (2026-09-23 audit)
+
+Deferred and perfective items from the comprehensive audit
+(2026-09-23, branch `arena/01a0cf8a-aerie`). Each item: classification
+(🟠 corrective / 🟡 adaptive /  perfective), estimated effort (S = <1h,
+M = half-day, L = day+), and dependencies. Full evidence in
+`docs/reports/quality/REMEDIATION-PLAN.md`; settings deltas in
+`docs/REPO-SETTINGS.adoc`.
+
+=== Formal proofs (protocol 4.3 — LEAN4, no prior assistant work)
+
+* **P1 — Proof-envelope invariants.** 🟢 PERFECTIVE · L · P0.
+  LEAN4 project (`verification/lean/`, lakefile + Mathlib) proving:
+  envelope well-formedness is preserved by the hash step; the "light"
+  envelope is injective in (payload, queryId) for fixed timestamp; hash
+  length is exactly 256 bits. Warrants the Idris2 model suite's P-suite.
+* **P2 — Policy-gate monotonicity.** 🟢 PERFECTIVE · M · P1 (project
+  scaffolding). The count-based window gate: allowed ⟹ below limit;
+  denied-rate-limited is monotone in the window count.
+* **P3 — Route matching correctness.** 🟢 PERFECTIVE · M · P1.
+  Longest-prefix match over the route table is well-defined and
+  deterministic; the `/` catch-all is the unique fallback.
+* **P4 — CI leg for proofs.** 🟠 CORRECTIVE · S · P1.
+  Workflow step (or `just proofs`) that runs `lake build` on the LEAN4
+  project so proof debt cannot silently rot (hypatia-rules
+  `proof-freshness` applies).
+
+=== Benchmarks (protocol 4.2 — proven-tests format)
+
+* **B1 — Idris2 benchmark skeleton.** 🟡 ADAPTIVE · M · tests/idris2
+  first green type-check. `benchmarks/Benchmark.idr` + ipkg in the
+  estate format (median-of-N, frozen workloads, JSON output): route
+  table matching, envelope formatting, gate evaluation.
+* **B2 — Zig gateway micro-benchmarks.** 🟢 PERFECTIVE · M · CI green.
+  A `bench` step in `build.zig` (proof-envelope hashing, resolver
+  dispatch) with baselines recorded per workload.
+
+=== Drift & architecture (owner decisions)
+
+* **D1 — `src/api/rust/` removal or re-home.** 🟠 CORRECTIVE · L ·
+  owner decision. Tracked drift per the architecture law; rust-ci.yml
+  keeps it testable meanwhile. Removal also drops the root Cargo
+  workspace, `.gitlab-ci.yml`'s cargo stages, and dependabot's cargo
+  group.
+* **D2 — `src/stale/hyperglass` disposition.** 🟠 CORRECTIVE · S ·
+  owner decision. Delete (upstream has its own repo) or re-home the
+  `.samples/` deployment fixtures that the BGP lab references.
+* **D3 — `.machine_readable/6a2/` → `descriptiles/` spelling.** 🟡
+  ADAPTIVE · S · deed stable. Template convention; low value, churn
+  risk — do only alongside a descriptile content update.
+
+=== Estate wiring
+
+* **E1 — Guix build-side derivation.** 🟡 ADAPTIVE · M · P4 (proofs
+  CI first, to keep the package honest). `define-public aerie` with a
+  source origin + sha256 + zig build system, replacing the manifest
+  once the build integration exists (language policy §2.1: no stubs).
+* **E2 — boj-server cartridge endpoint.** 🟡 ADAPTIVE · S · provisioning
+  of a real cartridge endpoint in `boj-server-cartridges`. The
+  `boj-build.yml` trigger is dormant (localhost, continue-on-error) by
+  design until then.
+* **E3 — gossamer/burble registration.** 🟢 PERFECTIVE · S · E2
+  pattern. aerie is a service repo; register it for estate service
+  discovery (stub in `.machine_readable/integrations/`).
+* **E4 — spline/cleave integration assessment.** 🟢 PERFECTIVE · S ·
+  their repos reaching readiness.
+* **E5 — `actions.lock` + optional workflows.** 🟢 PERFECTIVE · S ·
+  actions-lock tooling. `.github/workflows/actions.lock` (SHA lock) and
+  the catalog's optional set (main-estate-audit, rsr-compliance-canary,
+  estate-rules, ossf-best-practices) after the core set is green.
+
+=== Toolchain & verification (TRG first audit)
+
+* **T1 — Idris2 CI leg.** 🟠 CORRECTIVE · S · tests/idris2 green once.
+  A workflow (or `just test` step in rust-ci-style wrapper) that
+  type-checks and runs `tests/idris2` — until then the model suite is
+  scaffold-with-intent.
+* **T2 — TRG first audit.** 🟡 ADAPTIVE · M · T1, T3. Grade each
+  toolchain component (zig, rust-drift, idris2, julia, guix, podman)
+  against `toolchain-readiness-grades/` with machine-checkable claims;
+  replace the honest X in READINESS.adoc.
+* **T3 — Toolchain digest pins.** 🟢 PERFECTIVE · S · T1. Pin base
+  images by digest in Containerfile/.devcontainer for reproducible
+  builds (the `:latest` comments in both files name this debt).
+
+=== Documentation & wiki
+
+* **W1 — Wiki scaffolding.** 🟢 PERFECTIVE · M · plan review. Create
+  the Home + three audience pages (docs/wiki-plan.adoc level 0), then
+  the Users pages; content as plain Markdown per the berrywiki ruling.
+* **W2 — Hero/social preview image.** 🟢 PERFECTIVE · S · prompt review.
+  Generate the 1280×640 hero (prompt in docs/REPO-SETTINGS.adoc §hero),
+  commit under `assets/`, owner sets the social preview.
+* **W3 — `docs/just-cookbook.adoc` generation in CI.** 🟢 PERFECTIVE · S
+  · none. `just cookbook` step on push so the verb matrix stays live.
+
+=== Cross-repository (protocol Phase 9)
+
+* **X1 — proven-tests-and-benches contribution.** 🟠 CORRECTIVE · S ·
+  T1 (suite green first). Contribute `tests/idris2` as a corpus entry
+  (its `depends.a2ml`/`diagnosticity.a2ml` are already in the corpus
+  format); owner push.
+* **X2 — Gists.** 🟢 PERFECTIVE · S · none. Reusable artefacts from this
+  audit (repo-deed scaffold, REPO-SETTINGS measurement pattern) as
+  gists — owner preference (public for others, private for owner).
+* **X3 — Star taxonomy.** 🟡 ADAPTIVE · S · owner access. Star aerie;
+  create the third-party star list; move third-party stars into it.
