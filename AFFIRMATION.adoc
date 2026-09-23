@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-= AFFIRMATION — Aerie, as of 2026-09-23
+= AFFIRMATION — Aerie, as of 2026-09-23 (final stamp)
 :toc: macro
 :toclevels: 2
 :std-docs: https://github.com/hyperpolymath/standards/blob/main/docs
@@ -29,66 +29,83 @@ not re-verified — a stale affirmation is worse than none.
 |`arena/01a0cf8a-aerie` (branched from `main @ 0854656`)
 
 |Anchor SHA (state affirmed)
-|The commit that *precedes* the commit landing this file — the tree state whose claims are affirmed below. Move the HEAD and this file is a draft until re-run.
+|`5b9f94dce3caf9ca273a7e940f7a8d5f270d1b4b`
+
+|Anchor tree
+|`b58e4b596efa6d37c295c6794aee8fd019b972cf`
 
 |UTC timestamp
-|2026-09-23T~19:15Z (audit session; re-stamped at Phase 11 with the final SHA)
+|2026-09-23T18:50Z (final re-stamp; this file replaces the first stamp of
+the same session — chain hash of the previous content:
+`56ae60c7003010be3cac440d720563c090f9f5561c1a7ec9c0c7836011b04dfb`)
 
 |Working-tree delta at affirmation
-|Clean (all audit changes committed as conventional commits on the branch)
+|Clean — `git status` reports nothing to commit; 8 audit commits on the
+branch, all conventional (the new commit-msg hook enforced this on every
+one, and was observed to reject two overlong subjects during the session)
 
 |Toolchain
-|Python 3.11.2 (deed validation), git 2.x. *No Zig/Cargo/Idris2/Guix were available in the audit sandbox* — build/test claims below are deliberately absent, not forgotten.
+|Python 3.11.2 (deed validation), git 2.x, GitHub API (read-only
+measurements). *No Zig/Cargo/Idris2/Guix were available in the audit
+sandbox* — build/test claims are deliberately absent, not forgotten.
 |===
 
 == What we affirm, and how it was checked
 
-1. **The repo deed conforms to the normative DEED ABNF (v1.0.0).**
-   Checked by running the standards' own validator in this session:
+1. **The repo deed conforms to the normative DEED ABNF (v1.0.0)** —
+   re-verified at the final stamp:
    `python3 standards/1-formats/deed/tools/deed_lint.py aerie_chora.deed`
-   → `OK aerie_chora.deed`, exit 0. The deed is the universal AI entry point
-   (standards#837 one-deed-per-repo doctrine).
+   → `OK aerie_chora.deed`, exit 0 (run in this session against the final
+   file at the anchor SHA).
 
-2. **Every gitlink in the repository has a `.gitmodules` mapping.**
-   Checked by `git submodule status`: before this audit it fataled with
-   `no submodule mapping found in .gitmodules for path 'network/bgp-backbone-lab'`;
-   after the fix it lists all eight submodules (root bgp-backbone-lab,
-   qubes-sdp, six network/*) without error. All eight target repositories
-   were confirmed to exist in the estate via the GitHub API.
+2. **Every gitlink has a `.gitmodules` mapping.** `git submodule status`
+   lists all eight submodules without error (it fataled before the audit);
+   all eight target repositories exist in the estate (GitHub API).
 
 3. **No estate-banned language surface remains outside tracked, documented
-   drift.**
-   Checked by file census (`find` + extension audit): Deno config deleted
-   (`examples/web-project-deno.json`, banned 2026-09-22); no `.ts`/`.res`/
-   `.v`/`flake.nix` tracked; `src/stale/hyperglass` (vendored upstream with
-   legacy artifacts) is explicitly marked stale and recorded in the roadmap
-   rather than silently carried. `src/api/rust/` is *retained on purpose*:
-   it is tracked drift named as such in `.claude/CLAUDE.md`, `ARCHITECTURE.md`
-   and the deed, with removal an owner decision.
+   drift.** File census: Deno config deleted (banned 2026-09-22); no
+   `.ts`/`.res`/`.v`/`flake.nix` tracked; `src/stale/` explicitly marked
+   stale and roadmap-gated; `src/api/rust/` retained on purpose as tracked
+   drift named in `.claude/CLAUDE.md`, `ARCHITECTURE.md`, the deed, and the
+   roadmap (removal is D1, an owner decision).
 
-4. **The licence is MPL-2.0 (code) / CC-BY-SA-4.0 (prose docs) and aerie is
-   not in the PMPL register.**
-   Checked against `hyperpolymath/standards` 3-practice/LICENCE-POLICY.adoc
-   (register: palimpsest-license, palimpsest-plasma, consent-aware-web,
-   insolvency-tycoon, sim-public-relations) and against the tracked
-   `LICENSE` (MPL-2.0 full text) + `LICENSES/` dual texts. The README's
-   former "PMPL-1.0" badge was drift; it now reads MPL-2.0/CC-BY-SA-4.0.
+4. **The licence is MPL-2.0 (code) / CC-BY-SA-4.0 (prose docs).** aerie is
+   not in the PMPL register (checked against LICENCE-POLICY §2); the
+   tracked `LICENSE` is MPL-2.0 full text; `LICENSES/` carries both texts;
+   the README badges read accordingly.
 
-5. **CI wrapper workflows are SHA-pinned to the estate reusable set.**
-   Checked by inspection of `.github/workflows/` (12 pre-existing wrappers +
-   4 added this pass); every `uses:` of a third-party action carries a full
-   commit SHA with a version comment (estate pattern, PR #83).
+5. **The CI wrapper set is complete per the estate catalog and
+   SHA-pinned.** 16 workflows: the catalog's "all repos" set
+   (governance, codeql, scorecard, hypatia-scan) plus rust-ci (Rust
+   workspace exists), guix-policy (Guix-managed), release, validation,
+   dogfood-gate, boj-build, casket-pages, instant-sync, mirror, labels,
+   label-triage, push-email-notify, secret-scanner. Every third-party
+   `uses:` carries a full 40-hex commit SHA.
 
-6. **What we do NOT affirm:** that the project builds or that its tests
-   pass, as of this stamp. No compiler or interpreter for any project
-   language was available in the audit sandbox, and the network allowlist
-   excluded every toolchain CDN. That is a gap to close in CI
-   (`validation.yml` and the existing gate workflows), not a claim to make.
+6. **The GitHub settings record is a measurement, not an assertion.**
+   `docs/REPO-SETTINGS.adoc` records 16 settings already at canon (incl.
+   Branch-Floor, Require-Signed-Commits, immutable-tags active; full
+   discussion category set) and names the exact deltas — foremost that the
+   estate's `Optimus-Branch` merge gate exists but is *disabled* — with
+   one-line owner commands. Nothing was applied; the audit bot had no
+   admin permission, and that is stated in the file.
+
+7. **The readiness grades are honest.** CRG D (RSR-Compliant): structure,
+   docs, deed, and CI are complete; C is *not* claimed because no build or
+   test was executed in the audit sandbox. TRG X (Untested): the toolchain
+   is declared (mise/guix.scm/.tool-versions) but not yet audited against
+   the TRG rubric (first audit: roadmap T2).
+
+8. **What we do NOT affirm:** that the project builds, that its tests
+   pass, or that the Idris2 model suite type-checks. All three await their
+   first executed witness (CI, or a toolchain-equipped session); the
+   `tests/idris2/README.adoc` and `READINESS.adoc` say exactly that in
+   their own text.
 
 == The epistemic contract
 
-This document records the auditor's *best belief* at the timestamp above. It
-is *not* a guarantee of correctness. The only guarantee is *no intentional
-overclaim*: an honest claim that later turns out false is an error to be
-fixed — not a lie. Re-run the checks to falsify any line above; that is the
-point.
+This document records the auditor's *best belief* at the timestamp above.
+It is *not* a guarantee of correctness. The only guarantee is *no
+intentional overclaim*: an honest claim that later turns out false is an
+error to be fixed — not a lie. Re-run the checks to falsify any line above;
+that is the point.
