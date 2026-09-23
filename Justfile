@@ -25,7 +25,7 @@ build-release:
 test:
     @echo "=== In-tree suites ==="
     @if command -v zig >/dev/null 2>&1; then zig build test; else echo "zig not found — skipping zig unit tests"; fi
-    @if command -v idris2 >/dev/null 2>&1 && [ -f tests/idris2/Test.idr ]; then (cd tests/idris2 && idris2 -p . --build Test 2>/dev/null && idris2 -p . Test.main 2>/dev/null || echo "idris2 suite: see CI (type-check gate)"); else echo "idris2 not found — skipping idris2 suite"; fi
+    @if command -v idris2 >/dev/null 2>&1 && [ -f tests/idris2/Test.idr ]; then bash tests/idris2/run_tests.sh || echo "idris2 suite failed or incomplete — see its output"; else echo "idris2 not found — skipping idris2 suite"; fi
     @if command -v cargo >/dev/null 2>&1; then (cd src/api/rust && cargo test --quiet); else echo "cargo not found — skipping rust api tests (tracked drift)"; fi
     @echo "=== Submodule suites ==="
     @if [ -d qubes-sdp ] && [ -f qubes-sdp/justfile ]; then (cd qubes-sdp && just test); fi

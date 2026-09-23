@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MPL-2.0
+# Validity preconditions (exactness spine X.5). Violation of any precondition
+# yields exit 2 (VOID), and VOID propagates: a battery must reclassify any
+# green downstream of this unit's VOID as VOID.
+
+[upstream_units]
+value = "none — self-contained model suite; mirrors src/api/zig/{proof,policy}.zig invariants"
+
+[preconditions]
+idris2_available = "an Idris2 toolchain resolvable on PATH — violation exits 2 (NO CHECK PERFORMED)"
+typecheck_clean = "Test.idr must type-check under %default total — violation exits 2"
+
+[void_behaviour]
+convention = "exit 2 means NO CHECK WAS PERFORMED; it is never a pass and never a failure — a crash or a missing toolchain is 2"

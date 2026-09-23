@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MPL-2.0
+# Aerie model test suite (proven-tests format, provisionally-proven tier).
+
+package aerie-tests
+
+version = 0.1.0
+sourcedir = "."
+
+main = Test
+executable = "aerie-tests"

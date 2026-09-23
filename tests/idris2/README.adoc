@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= Aerie — Idris2 Model Suite (proven-tests format)
+
+== What this is
+
+Type-safe, total Idris2 property checks for the three specification
+invariants of the aerie gateway, in the estate's proven-tests format
+(companion to `hyperpolymath/proven-tests-and-benches`).
+
+* **Proof envelope** — SHA-256 "light" envelopes: 64 hex hash, non-empty
+  query id, non-empty digit timestamp (mirrors `src/api/zig/proof.zig`).
+* **Policy gate** — keyless never allowed; rate limit monotone in the
+  window count (mirrors `src/api/zig/policy.zig`).
+* **Route trie** — longest-prefix match over the gateway route table
+  (changelog 0.3.0 feature).
+
+== Tier (honest)
+
+**Provisionally-Proven** — typed assertions, exhaustive finite grids where
+feasible, witness tables otherwise. *Not* a full proof ladder. The
+`Test.idr` header states the exact conditions under which the claim would
+upgrade.
+
+== Status
+
+Written 2026-09-23 in the audit session. *Not yet type-checked* — no Idris2
+in the audit sandbox. First check: CI (`validation.yml`) or `just test` on a
+toolchain-equipped machine. Until the first green type-check, this suite is
+scaffold-with-intent, not evidence.
+
+== Run
+
+----
+./run_tests.sh          # exit 0 = pass, 1 = failed check, 2 = no check performed
+idris2 --build Test && idris2 aerie-tests
+----
+
+`depends.a2ml` and `diagnosticity.a2ml` carry the corpus metadata for
+contribution back to `proven-tests-and-benches` (ROADMAP Phase 9).

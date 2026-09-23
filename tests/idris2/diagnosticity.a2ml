@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MPL-2.0
+# Diagnosticity contract for the aerie model suite (tests/idris2).
+
+[detects]
+condition = "divergence between the aerie specification models (proof envelope well-formedness, policy-gate monotonicity, longest-prefix route matching) and their stated invariants"
+defect_class = "spec-model-drift"
+ground_truth = "modelled from src/api/zig/proof.zig (SHA-256 light envelopes), src/api/zig/policy.zig (per-key window rate limit), and the changelog's trie-based route matching (0.3.0)"
+
+[sensitivity]
+envelope = "5 well-formed + 5 malformed witnesses (short hash, non-hex hash, empty id, empty timestamp, non-digit timestamp)"
+gate = "finite grids: hasKey x count {0,1,5,10,100} x limit {0,3,99} and limit {1,2,5,10} x count {0,1,2,5,10}"
+routes = "9 witness paths incl. ties, non-matches, and the '/' catch-all"
+
+[confusables]
+model_vs_impl = "this suite tests the MODEL, not the Zig binary; the implementation witness is 'zig build test' — both must be green and a divergence is triaged against src/api/zig/ as the authoritative side"
+
+[does_not_distinguish]
+value = "concurrency behaviour of the real gate (window sliding is time-based in Zig; the model is count-based by construction)"
