@@ -1,0 +1,6 @@
+# Conventional commit — type(scope): subject (<= 50 chars, imperative)
+#
+# Types: feat fix docs style refactor test chore build ci perf revert
+#
+# Body: explain WHY, not what (diff shows the what).
+# Reference issues: #NNN or full URL.

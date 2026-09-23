@@ -1,5 +1,9 @@
 # SPDX-License-Identifier: MPL-2.0
-# RSR-compliant .gitignore
+# Aerie .gitignore — scoped to the languages actually in this repository
+# (Zig, Rust, Idris2, Julia, AffineScript/JS-glue, Guix) plus general
+# secrets/logs rules. The previous version was a multi-language
+# kitchen-sink (Elixir/ReScript/Deno/V/Ada/Haskell — none present) and
+# wrongly ignored .tool-versions, which estate REQUIRED-FILES mandates.
 
 # OS & Editor
 .DS_Store
@@ -10,80 +14,48 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Build
-/target/
-/_build/
-/build/
-/dist/
-/out/
-/specs/outputs/
-/generated/
-
-# Dependencies
-/node_modules/
-/vendor/
-/deps/
-/.elixir_ls/
+# Zig
+.zig-cache/
+zig-out/
 
 # Rust
-# Cargo.lock  # Keep for binaries
+/target/
 
-# Elixir
-/cover/
-/doc/
-*.ez
-erl_crash.dump
+# Idris2
+/_build/
+*.idr~
 
-# ReScript
-/lib/bs/
-/.bsb.lock
+# Julia
+/Manifest.toml.junk
+*.jl.cov
+*.jl.coverage
+.julia/
 
-# Deno
+# JS/TS glue (runs on Bun; no build-step artefacts committed)
+/node_modules/
 *.tsbuildinfo
+dist/
+build/
 
-# V language
-*.v.cache
-*.tmp.c
+# Guix
+/.guix-env
 
-# Ada/SPARK
-*.ali
-/obj/
-/bin/
+# Generated (guarded by specs/manifest.sha256)
+/generated/
 
-# Haskell
-/.stack-work/
-/dist-newstyle/
-
-# Secrets
+# Secrets (never commit)
 .env
 .env.*
+.envrc.local
 *.pem
 *.key
 secrets/
-
-# Test/Coverage
-/coverage/
-htmlcov/
 
 # Logs
 *.log
 /logs/
 
 # Temp
-/tmp/
 *.tmp
 *.bak
-
-# Crash recovery artifacts
-ai-cli-crash-capture/
-
-# asdf version manager
-.tool-versions
-target/
-node_modules/
-_build/
-deps/
-.elixir_ls/
-.cache/
-build/
-dist/
+/tmp/

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MPL-2.0
+# Conventional-commit gate (estate pattern).
+set -euo pipefail
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Non-merge, non-revert auto-commits are exempt
+case "$COMMIT_MSG" in
+  "Merge "*|"Revert "*|"fixup!"*|"squash!"*) exit 0;;
+esac
+
+if ! echo "$COMMIT_MSG" | head -1 | grep -qE '^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\([a-z0-9-]+(\s*,\s*[a-z0-9-]+)*\))?: '; then
+  echo "[commit-msg] ERROR: not conventional-commit format" >&2
+  echo "Expected: type(scope): description — types: feat fix docs style refactor test chore build ci perf revert" >&2
+  exit 1
+fi
+
+SUBJECT=$(echo "$COMMIT_MSG" | head -1)
+LEN=${#SUBJECT}
+if [ "$LEN" -gt 72 ]; then
+  echo "[commit-msg] ERROR: subject exceeds 72 chars ($LEN)" >&2
+  exit 1
+fi
+echo "[commit-msg] OK: $SUBJECT"

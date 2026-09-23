@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MPL-2.0
+# Pre-push gate: secret scan + DEED validation (estate pattern).
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bash "$HERE/scan-secrets.sh"
+bash "$HERE/validate-deed.sh"

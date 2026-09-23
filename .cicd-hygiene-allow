@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MPL-2.0
+# Code-hygiene gate allowlist (consumed by cicd-suite actions/code-hygiene-check).
+#
+# The entry below is a scaffold seam, not implementation debt: src/stale/
+# is a vendored upstream copy explicitly marked stale (removal is ROADMAP
+# Phase 7, owner decision). Excluding it keeps the gate's debt-tracking
+# signal clean for live source. Do not widen this list.
+src/stale/
