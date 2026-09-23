@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: MPL-2.0
+# Release workflow — triggered by version tags (v*).
+# Builds the gateway with the pinned Zig toolchain, generates the changelog
+# via git-cliff, creates the GitHub Release, and mints a build-provenance
+# attestation (OIDC + Sigstore). All third-party actions SHA-pinned.
+name: Release
+on:
+  push:
+    tags:
+      - 'v*'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  release:
+    name: Build, attest, and release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write    # mint the OIDC token the attestation is signed with
+      attestations: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Zig 0.15.2
+        run: |
+          ARCH=$(uname -m); case "$ARCH" in x86_64) A=x86_64;; aarch64) A=aarch64;; esac
+          curl -sSfL "https://ziglang.org/download/0.15.2/zig-${A}-linux-0.15.2.tar.xz" | tar -xJ --strip-components=1 -C /opt
+          echo "/opt/zig" >> "$GITHUB_PATH"
+          zig version
+
+      - name: Build gateway (ReleaseSafe)
+        run: |
+          zig build -Doptimize=ReleaseSafe
+          zig build test
+          mkdir -p dist && cp zig-out/bin/aerie-gateway dist/
+
+      - name: Generate changelog (git-cliff)
+        id: cliff
+        run: |
+          curl -sSfL https://github.com/orhun/git-cliff/releases/latest/download/git-cliff-$(uname -m)-unknown-linux-gnu.tar.gz \
+            | tar -xz --strip-components=1 -C /usr/local/bin/ git-cliff-*/git-cliff
+          VERSION="${GITHUB_REF_NAME#v}"
+          {
+            echo "content<<CLIFF_EOF"
+            git cliff --latest --strip header || echo "(changelog unavailable for this tag)"
+            echo "CLIFF_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/aerie-gateway \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "${{ steps.cliff.outputs.content }}" \
+            --verify-tag
+
+      - name: Attest build provenance
+        if: ${{ github.event_name == 'push' }}
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/aerie-gateway

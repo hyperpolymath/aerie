@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: MPL-2.0
+# Validation — the estate diagnostic tools against this repo (protocol
+# Phase 10). Runs on dispatch (and on push to main so findings stay fresh):
+#   * pons-asinorum — depth scanner (dead work, self-contradiction,
+#     missing escape hatches); reports with honest evidence tiers.
+#   * panic-attack — breadth scanner (49 languages, security/panic weak
+#     points); the repo is not publicly resolvable today, so this leg is
+#     best-effort with continue-on-error and a recorded gap.
+name: Validation (Pons Asinorum & Panic Attack)
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  pons-asinorum:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Build pons-asinorum
+        run: |
+          git clone --depth 1 https://github.com/hyperpolymath/pons-asinorum.git /tmp/pons-asinorum
+          cargo build --manifest-path /tmp/pons-asinorum/Cargo.toml --release
+
+      - name: Scan aerie
+        id: scan
+        run: |
+          set +e
+          /tmp/pons-asinorum/target/release/pons scan . --format text 2>&1 | tee pons-report.txt
+          rc=$?
+          echo "exit=$rc" >> "$GITHUB_OUTPUT"
+          echo "## pons-asinorum report" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat pons-report.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          # Findings are recorded, not auto-failed: each must be triaged
+          # (fix or classify in audits/) per the estate audit pattern.
+          exit 0
+
+      - name: Persist report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pons-asinorum-report
+          path: pons-report.txt
+          retention-days: 30
+
+  panic-attack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Run panic-attack (best-effort — repo not publicly resolvable)
+        run: |
+          if git clone --depth 1 https://github.com/hyperpolymath/panic-attack.git /tmp/panic-attack 2>/dev/null; then
+            echo "panic-attack cloned; invoking assail scan."
+            bash /tmp/panic-attack/assail . 2>&1 | tee panic-report.txt || true
+          else
+            echo "::warning::panic-attack is not publicly resolvable (estate gap recorded in GAP analysis). Prior classifications are retained in audits/assail-classifications.a2ml."
+            echo "panic-attack unavailable (repo not publicly resolvable) — see audits/ for the 2026-05-26 classifications." > panic-report.txt
+          fi
+
+      - name: Persist report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: panic-attack-report
+          path: panic-report.txt
+          retention-days: 30
