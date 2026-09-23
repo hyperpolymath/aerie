@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "www"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  Served by the casket Pages pipeline. The canonical .well-known/ metadata lives here (security.txt, did.json, groove manifest, accessibility conformance, MTA-STS).
+canonical_locations:
+  well-known: ".well-known/"
+
+---
+### [FILE_RELATIONSHIPS]
+

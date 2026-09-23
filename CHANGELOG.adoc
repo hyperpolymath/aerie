@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Aerie — Changelog
+:toc: preamble
+
+All notable changes to this project are documented here.
+Format follows Keep a Changelog; PR numbers refer to
+https://github.com/hyperpolymath/aerie/pulls[hyperpolymath/aerie].
+
+== [Unreleased] — 0.4.0 audit cycle (2026-09-23)
+
+=== Added
+
+* `aerie_chora.deed` — the repo deed (standards#837): one-deed-per-repo
+  universal AI entry point, replacing the legacy `0-AI-MANIFEST.a2ml` as the
+  canonical machine-readable front door (the a2ml is retained as source).
+* `AFFIRMATION.adoc` — profile-A evidential affirmation (re-stamped each audit).
+* `READINESS.adoc` — CRG/TRG single source of truth (feeds `just crg-grade`).
+* Per-layer `README.md` + `0.1-AI-MANIFEST` files for the major directory
+  pillars (root, src, src/api, src/abi, src/ui, ffi, specs, network, configs,
+  contractiles, docs, examples, tests, www, audits, schemas).
+* `guix.scm` — Guix packaging (primary per estate language policy §2).
+* `.devcontainer/` — VS Code dev container (sealed toolchain).
+* `.github/hooks/` — portable hook set (install, pre-push secret scan,
+  deed/k9 validation) wired via `core.hooksPath`.
+* `docs/man/aerie.1` — groff man page (high-arity argument reference).
+* `.github/ISSUE_TEMPLATE/` + PR template (estate pattern).
+* Workflows: `rust-ci.yml` (Rust workspace exists), `guix-policy.yml`,
+  `release.yml`, `validation.yml` (pons-asinorum / panic-attack on dispatch).
+* `tests/idris2/` — proven-tests-format Idris2 suite scaffold.
+* `docs/REPO-SETTINGS.adoc`, `docs/wiki-plan.adoc`,
+  `docs/reports/quality/REMEDIATION-PLAN.md`, `docs/SETUP.adoc`.
+* Conventional dotfiles: `.envrc`, `.mailmap`, `.gitleaksignore`,
+  `.cicd-hygiene-allow`, `.hypatia-ignore`, `.tool-versions`.
+
+=== Changed
+
+* `mise.toml` — replaced the template kitchen-sink (which pinned estate-banned
+  toolchains: Python, Go, Java, Deno, make) with the aerie toolchain.
+* `README.md` — licence badges corrected (MPL-2.0 code / CC-BY-SA-4.0 docs;
+  aerie is not in the PMPL register), broken `<embed>` badge removed,
+  CF-NDS acronym explained, four-approach quickstart added.
+* `Justfile` — canonical verbs added: `setup`, `build`, `test`, `bench`,
+  `format`, `clean`, `release`, `install`, `guix-shell`, `container-build`,
+  `man`, `cookbook`.
+* `CHANGELOG.md` → `CHANGELOG.adoc` (estate documentation format).
+* `ARCHITECTURE.md` — rewritten from scaffold filler to the actual
+  architecture law and layout.
+
+=== Fixed
+
+* `.gitmodules` — six `network/*` gitlinks had no mappings, which fataled
+  `git submodule status`; mappings added (all repos exist in the estate).
+* `eclexiaiser.toml` — `main` pointed at the nonexistent `src/main.rs`; now
+  `src/api/rust/src/main.rs`.
+* `Containerfile` comment — the removed implementation was V
+  (`src/api/v/`), not "zig"; the comment contradicted the law it quoted.
+* `.claude/CLAUDE.md` — "Never Zig, Rust, or C" self-contradiction (Zig IS the
+  API language) and the "Zig (src/api/v/)" mislabel corrected.
+
+=== Removed
+
+* `examples/web-project-deno.json` — Deno banned estate-wide 2026-09-22.
+* `MAINTAINERS` (extensionless scaffold duplicate; `MAINTAINERS.adoc` is
+  canonical).
+* `RSR_OUTLINE.adoc` — verbatim stale copy of the old rsr-template README.
+
+== [0.3.0] — 2026-03-03
+
+* Triple-mount API gateway (GraphQL + gRPC + REST) behind the policy gate.
+* SmokePing "Smoke" charts for 24 h jitter patterns.
+* VerisimDB bitemporal audit wiring.
+* Bitemporal storage plan (valid-time + tx-time).
+* Proof envelopes (SHA-256 "light" mode) on all responses.
+* Resolver policy gate and subscription auth flow.
+* OSI forensics matrix and HUD widget mapping.
+* Bottom-up K9 spec system with guarded rendered outputs.
+
+*Historic note:* this release's changelog entry previously carried
+per-commit auto-commit lines; they are superseded by the git log, which is
+the authoritative record.

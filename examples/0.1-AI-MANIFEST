@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "examples"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  Examples for deploying and consuming the diagnostic suite.
+canonical_locations:
+  SafeDOMExampleaffine: "SafeDOMExample.affine"
+
+---
+### [FILE_RELATIONSHIPS]
+

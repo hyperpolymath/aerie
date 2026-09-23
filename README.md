@@ -3,17 +3,33 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 -->
 
+[![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](https://opensource.org/licenses/MPL-2.0)
+[![Docs: CC-BY-SA-4.0](https://img.shields.io/badge/Docs-CC--BY--SA--4.0-blue.svg)](https://creativecommons.org/licenses/by-sa/4.0/)
 [![OpenSSF Best Practices](https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity)](https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/aerie)
-[![License: PMPL-1.0](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](https://github.com/hyperpolymath/palimpsest-license) <embed
-src="https://api.thegreenwebfoundation.org/greencheckimage/github.com"
-data-link="https://www.thegreenwebfoundation.org/green-web-check/?url=github.com" />
+
+Green check: [thegreenwebfoundation.org](https://www.thegreenwebfoundation.org/green-web-check/?url=github.com)
 
 # Purpose
 
-A high-assurance alternative to commercial speedtests. CF-NDS is
-designed to provide network engineers with the raw data required to
-diagnose routing interference, BGP hijacks, or ISP throttling without
-the privacy risks of third-party telemetry.
+Aerie — the **C**yber-**F**ocused **N**etwork **D**iagnostic **S**uite
+(CF-NDS) — is a high-assurance alternative to commercial speedtests.
+It gives network engineers the raw data required to diagnose routing
+interference, BGP hijacks, or ISP throttling without the privacy risks
+of third-party telemetry.
+
+# Quick Start
+
+Four ways in — full detail in [`docs/SETUP.adoc`](docs/SETUP.adoc):
+
+1. **AI-assisted** — point an agent at the repo: `Read aerie_chora.deed,
+   .claude/CLAUDE.md and docs/SETUP.adoc, then set up and build this
+   repository. Use the Justfile as the single entry point.`
+2. **Raw** — `git clone` → install Zig 0.15.2+, just, and Podman →
+   `zig build -Doptimize=ReleaseSafe` → `podman compose -f compose.yml up`.
+3. **Just** — `./setup.sh` (installs just if missing), then
+   `just doctor && just build && just test`.
+4. **Launcher** — `./aerie-launcher.sh` (standards-compliant,
+   cross-platform, launch-scaffolder generated).
 
 # Key Features
 

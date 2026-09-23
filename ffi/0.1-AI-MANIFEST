@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "ffi"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  Estate law: FFI = Zig. C-compatible implementation layer with its own build.zig; unsafe blocks are confined to the C ABI boundary and classified in audits/assail-classifications.a2ml.
+canonical_locations:
+  zig: "zig/"
+
+---
+### [FILE_RELATIONSHIPS]
+files:
+  - name: "zig/build.zig"
+    description: "FFI build graph"
+  - name: "zig/src/main.zig"
+    description: "FFI implementation"
+  - name: "zig/test/integration_test.zig"
+    description: "FFI integration test"
+

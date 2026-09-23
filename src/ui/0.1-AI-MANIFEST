@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "src-ui"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  High-density, SOC-style dashboard (AffineScript -> typed-wasm): dark-mode forensics portal per the README's HUD layout.
+canonical_locations:
+  tea: "tea/"
+  css: "css/"
+  public: "public/"
+
+---
+### [FILE_RELATIONSHIPS]
+files:
+  - name: "tea/aerie_gui.affine"
+    description: "AffineScript TEA app"
+  - name: "tea/aerie_tea.js"
+    description: "JS runtime glue (permitted carve-out; runs on Bun)"
+  - name: "public/index.html"
+    description: "HUD entry point"
+

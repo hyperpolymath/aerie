@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "schemas"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  CUE schemas used to validate the generated configuration (see configs/ and .conflow.yaml).
+canonical_locations:
+  configcue: "config.cue"
+
+---
+### [FILE_RELATIONSHIPS]
+

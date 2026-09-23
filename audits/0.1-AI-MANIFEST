@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "audits"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  panic-attack / assail findings and their per-finding classifications. Every classified finding names its audit document and rationale.
+canonical_locations:
+  assail-classificationsa2ml: "assail-classifications.a2ml"
+  audit-ffi-2026-05-26md: "audit-ffi-2026-05-26.md"
+
+---
+### [FILE_RELATIONSHIPS]
+

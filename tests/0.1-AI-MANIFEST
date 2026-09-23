@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "tests"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  In-tree verification: fuzz corpus and the Idris2 proven-tests-format suite (provisionally-proven tier; type-check via CI).
+canonical_locations:
+  fuzz: "fuzz/"
+  idris2: "idris2/"
+
+---
+### [FILE_RELATIONSHIPS]
+

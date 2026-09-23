@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "src-api"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  The canonical implementation is the Zig gateway (zig/), built by the root build.zig. The Rust crate (rust/) is tracked drift: do not build, extend, or migrate to it.
+canonical_locations:
+  zig: "zig/"
+  graphql: "graphql/"
+  proto: "proto/"
+  rust: "rust/"
+
+---
+### [FILE_RELATIONSHIPS]
+files:
+  - name: "zig"
+    description: "canonical Zig gateway"
+  - name: "graphql/schema.graphql"
+    description: "GraphQL wire contract"
+  - name: "proto/aerie.proto"
+    description: "gRPC wire contract"
+  - name: "rust"
+    description: "tracked drift; removal is an owner decision"
+
