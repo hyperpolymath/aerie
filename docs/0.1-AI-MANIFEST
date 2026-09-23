@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "docs"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  Setup (four approaches), man pages, reports (quality/security), the wiki plan, and the measured repository-settings record.
+canonical_locations:
+  SETUPadoc: "SETUP.adoc"
+  man: "man/"
+  reports: "reports/"
+  wiki-planadoc: "wiki-plan.adoc"
+  REPO-SETTINGSadoc: "REPO-SETTINGS.adoc"
+
+---
+### [FILE_RELATIONSHIPS]
+

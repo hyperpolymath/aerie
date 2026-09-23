@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MPL-2.0
+# Hypatia scanner ignore list (repo-root file, hypatia convention).
+# Submodule working trees carry their own governance and must not be
+# scanned as aerie source.
+bgp-backbone-lab/
+qubes-sdp/
+network/
+# Vendored upstream copy, explicitly stale (see .cicd-hygiene-allow).
+src/stale/

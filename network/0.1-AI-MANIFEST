@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "network"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  Each entry is a submodule pinned in .gitmodules (SSH URLs per estate REMOTE-URL-POLICY). They are independent repositories with their own governance.
+canonical_locations:
+  bgp-backbone-lab: "bgp-backbone-lab/"
+  ipv6-only: "ipv6-only/"
+  ipv6-site-enforcer: "ipv6-site-enforcer/"
+  ipv6-tools: "ipv6-tools/"
+  network-ambulance: "network-ambulance/"
+  network-dashboard: "network-dashboard/"
+
+---
+### [FILE_RELATIONSHIPS]
+

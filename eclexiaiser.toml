@@ -6,7 +6,7 @@ name = "aerie"
 
 [[functions]]
 name = "main"
-source = "src/main.rs"
+source = "src/api/rust/src/main.rs"
 energy-budget-mj = 12.0
 
 [carbon]

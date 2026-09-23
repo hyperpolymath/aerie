@@ -13,3 +13,33 @@
 	path = qubes-sdp
 	url = git@github.com:hyperpolymath/qubes-sdp.git
 	branch = main
+
+[submodule "network/bgp-backbone-lab"]
+	path = network/bgp-backbone-lab
+	url = git@github.com:hyperpolymath/bgp-backbone-lab.git
+	branch = main
+
+[submodule "network/ipv6-only"]
+	path = network/ipv6-only
+	url = git@github.com:hyperpolymath/ipv6-only.git
+	branch = main
+
+[submodule "network/ipv6-site-enforcer"]
+	path = network/ipv6-site-enforcer
+	url = git@github.com:hyperpolymath/ipv6-site-enforcer.git
+	branch = main
+
+[submodule "network/ipv6-tools"]
+	path = network/ipv6-tools
+	url = git@github.com:hyperpolymath/ipv6-tools.git
+	branch = main
+
+[submodule "network/network-ambulance"]
+	path = network/network-ambulance
+	url = git@github.com:hyperpolymath/network-ambulance.git
+	branch = main
+
+[submodule "network/network-dashboard"]
+	path = network/network-dashboard
+	url = git@github.com:hyperpolymath/network-dashboard.git
+	branch = main

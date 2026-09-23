@@ -1,0 +1,83 @@
+;; SPDX-License-Identifier: MPL-2.0
+;;
+;; The repo deed of aerie: one-deed-per-repo doctrine (standards#837,
+;; owner ruling 2026-09-19, Option A). Universal AI entry point:
+;; canonical locations, architecture law, and estate policies in one
+;; machine-readable surface. The legacy 0-AI-MANIFEST.a2ml and the
+;; .machine_readable/6a2/ descriptiles remain as human-authored sources;
+;; this deed is the projection agents consume first.
+(repo-deed
+  :schema-version "1.0.0"
+  :canonical-name "aerie"
+  :repo-uuid #u5"github.com/hyperpolymath/aerie"
+  :beholding-chora #u5"estate/chora"
+  (manifest
+    :version "0.1.0"
+    :last-updated "2026-09-23"
+    :project "aerie"
+    :type service
+    :purpose "Cyber-focused network diagnostic suite (CF-NDS): zero-telemetry speedtest (LibreSpeed), BGP path visibility (Hyperglass), jitter persistence (SmokePing), and hardened SOC-grade access behind a proof-enveloped Zig gateway (dual-use)."
+    :languages (zig idris2 rust julia affinescript nickel shell)
+    :license MPL-2.0
+    :docs-license CC-BY-SA-4.0
+    :author "Jonathan D.A. Jewell (hyperpolymath)"
+    :build-tool just
+    :packaging (guix containerfile)
+    (agent :name CLAUDE :role "Zig gateway implementation, Idris2 ABI, FFI, CI/CD, formal verification, Rust (tracked drift only — no extensions)")
+    (agent :name CHATGPT :role "prose, documentation, publication review, outreach drafts")
+    (agent :name GEMINI :role "estate audits, cross-repo sweeps, long-context triage, pattern detection")
+    (agent :name VIBE :role "SOC HUD frontend, AffineScript widgets, theming, rapid prototyping")
+    (policy :rules ("Estate architecture law (day 1, non-negotiable): ABI = Idris2, FFI = Zig, API = Zig. No other language may be used for these layers." "Do not build, extend, or migrate to src/api/rust - it is tracked drift, removal is an owner decision (ROADMAP Phase 7)." "Banned estate-wide: Python, V, ATS2, ReScript, Go, Java, Kotlin, Swift, Deno (ruling 2026-09-22), Nix (retired 2026-06-01), Makefiles (use just)." "All responses carry a proof envelope; no gatekeeperless gateways - the policy gate precedes every backend call." "Documentation and dialogue are in Oxford British English." "Update the manifest clause of THIS deed during sessions. Do NOT recreate per-repo TODO files.")))
+  (ply
+    (directory :ply 1 :path ".github" :description "Community health, label tooling, and SHA-pinned CI workflow wrappers over the hyperpolymath/standards reusable set.")
+    (directory :id "machine-readable-pillar" :ply 1 :path ".machine_readable" :description "Machine-readable metadata: descriptile family (6a2/), agent instructions, anchors, contractiles, integrations, and k9 svc templates."
+      (canonical-locations :descriptiles "6a2/" :agent_instructions "agent_instructions/" :anchors "anchors/" :contractiles "contractiles/" :integrations "integrations/" :svc "svc/"))
+    (directory :id "audits-unit" :ply 1 :path "audits" :description "Audit findings and their classifications (FFI unsafe-block registry)."
+      :invariants ("Every classified finding names its audit document and rationale"))
+    (directory :id "bgp-lab-submodule" :ply 1 :path "bgp-backbone-lab" :description "Submodule: hyperpolymath/bgp-backbone-lab — BGP topology laboratory pinned by gitlink.")
+    (directory :id "configs-unit" :ply 1 :path "configs" :description "Nickel (conflow) configuration source of truth."
+      (canonical-locations :config "config.ncl"))
+    (directory :id "contractiles-unit" :ply 1 :path "contractiles" :description "Deployment-state contracts: Must (deploy), Trust, Dust, Intent."
+      (canonical-locations :must "must/Mustfile" :trust "trust/Trustfile.a2ml" :dust "dust/Dustfile" :intend "intend/Intentfile.a2ml"))
+    (directory :id "docs-pillar" :ply 1 :path "docs" :description "Human documentation: setup, man pages, reports (quality/security audits), wiki plan, and repo settings record."
+      (canonical-locations :setup "SETUP.adoc" :man "man/" :quality_reports "reports/quality/" :audit_reports "reports/audit/" :wiki_plan "wiki-plan.adoc" :repo_settings "REPO-SETTINGS.adoc"))
+    (directory :id "examples-unit" :ply 1 :path "examples" :description "Usage examples for the diagnostic suite.")
+    (directory :id "ffi-pillar" :ply 1 :path "ffi" :description "Foreign-function-interface layer (estate law: FFI = Zig)."
+      (canonical-locations :zig "zig/")
+      :invariants ("FFI unsafe blocks are confined to the C ABI boundary and classified in audits/assail-classifications.a2ml"))
+    (directory :id "network-submodules" :ply 1 :path "network" :description "Submodules pinned by gitlink: BGP lab, IPv6 enforcement, network dashboards."
+      (directory :ply 2 :path "network/bgp-backbone-lab" :description "Submodule: BGP topology lab.")
+      (directory :ply 2 :path "network/ipv6-only" :description "Submodule: IPv6-only enforcement.")
+      (directory :ply 2 :path "network/ipv6-site-enforcer" :description "Submodule: site-level IPv6 enforcement.")
+      (directory :ply 2 :path "network/ipv6-tools" :description "Submodule: IPv6 tooling.")
+      (directory :ply 2 :path "network/network-ambulance" :description "Submodule: incident response tooling.")
+      (directory :ply 2 :path "network/network-dashboard" :description "Submodule: network dashboards."))
+    (directory :id "qubes-sdp-submodule" :ply 1 :path "qubes-sdp" :description "Submodule: hyperpolymath/qubes-sdp — Qubes-SDP integration pinned by gitlink.")
+    (directory :id "schemas-unit" :ply 1 :path "schemas" :description "Wire and configuration schema definitions (CUE).")
+    (directory :id "specs-pillar" :ply 1 :path "specs" :description "Bottom-up K9/SVC component specs with guarded rendered outputs."
+      (canonical-locations :components "components/" :fragments "fragments/" :outputs "outputs/" :tools "tools/" :manifest "manifest.sha256")
+      :invariants ("specs/outputs are guarded: changing them without updating manifest.sha256 fails the pre-commit hook"))
+    (directory :id "source-pillar" :ply 1 :path "src" :description "Primary source, organised by architectural layer."
+      (directory :id "abi-unit" :ply 2 :path "src/abi" :description "Idris2 ABI: formal type definitions with proofs (estate law: ABI = Idris2)."
+        (canonical-locations :foreign "Foreign.idr" :layout "Layout.idr" :types "Types.idr"))
+      (directory :id "api-unit" :ply 2 :path "src/api" :description "API plane: the canonical Zig gateway plus wire contracts, and the tracked-drift Rust rewrite."
+        (canonical-locations :gateway "zig/" :graphql "graphql/schema.graphql" :grpc "proto/aerie.proto" :rust_drift "rust/")
+        :invariants ("The Zig gateway (zig/) is the only supported API implementation" "rust/ is tracked drift: do not build, extend, or migrate to it"))
+      (directory :id "core-unit" :ply 2 :path "src/core" :description "Julia core experiment (Aerie.jl).")
+      (directory :id "ui-unit" :ply 2 :path "src/ui" :description "SOC HUD front-end: AffineScript (typed-wasm), css, and public assets."
+        (canonical-locations :tea "tea/" :css "css/" :public "public/"))
+      (directory :id "stale-vendor" :ply 2 :path "src/stale" :description "Vendored upstream copies, explicitly stale. Do not reference from live code; removal is a ROADMAP item.")
+      :invariants ("Core gateway logic resides in src/api/zig/" "Formal types reside in src/abi/"))
+    (directory :id "tests-unit" :ply 1 :path "tests" :description "Test suites: fuzz corpus and the Idris2 proven-tests-format suite."
+      (canonical-locations :fuzz "fuzz/" :idris2 "idris2/"))
+    (directory :id "www-unit" :ply 1 :path "www" :description "Site-operations bundle; the canonical .well-known/ metadata lives here (security.txt, did.json, groove manifest, accessibility conformance)."))
+  (file-relationships
+    (file :name "aerie_chora.deed" :role "Repo deed" :description "This file: universal AI entry point and allocation manifest." :depends-on ())
+    (file :name "build.zig" :role "Gateway build" :description "Zig build graph for aerie-gateway (0.15.2+); -Dzig-api-lib-path / -Dzig-api-include-path override the FFI dependency." :depends-on ("src/api/zig/main.zig"))
+    (file :name "Containerfile" :role "OCI image" :description "Two-stage Chainguard build (wolfi-base -> static) for the gateway binary." :depends-on ("build.zig"))
+    (file :name "Justfile" :role "Task runner" :description "Single entry point: setup, build, test, bench, lint, format, clean, release, install, man, cookbook." :depends-on ())
+    (file :name "compose.yml" :role "Stack orchestration" :description "The Forensics Bridge network: gateway, librespeed, smokeping, hyperglass, redis." :depends-on ("Containerfile"))
+    (file :name "guix.scm" :role "Guix packaging" :description "Primary packaging per estate language policy; names aerie, MPL-2.0." :depends-on ())
+    (file :name "aerie-launcher.sh" :role "Launcher" :description "Standards-compliant cross-platform launcher; generated by launch-scaffolder from aerie.launcher.a2ml." :depends-on ("aerie.launcher.a2ml"))
+    (file :name "README.md" :role "Entry point" :description "Purpose, features, quick start (four approaches), security note." :depends-on ("docs/SETUP.adoc"))
+    (file :name "TOPOLOGY.md" :role "Architecture map" :description "Visual system map and completion dashboard; ARCHITECTURE.md states the invariants." :depends-on ())))

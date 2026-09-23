@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "aerie-root"
+version: "0.1.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  Aerie — cyber-focused network diagnostic suite (CF-NDS): zero-telemetry
+  speedtest, BGP path visibility, jitter persistence, and hardened
+  SOC-grade access behind a proof-enveloped Zig gateway (dual-use).
+
+purpose: |
+  Root manifest. The repo deed (aerie_chora.deed) is the universal AI
+  entry point and carries the full allocation/ply tree; this file is the
+  ply-0 layer manifest for agent orientation.
+
+canonical_locations:
+  deed: "aerie_chora.deed"
+  ai_instructions: ".claude/CLAUDE.md"
+  setup: "docs/SETUP.adoc"
+  readiness: "READINESS.adoc"
+  affirmation: "AFFIRMATION.adoc"
+  roadmap: "ROADMAP.adoc"
+  build: "build.zig"
+  task_runner: "Justfile"
+  packaging: "guix.scm"
+  container: "Containerfile"
+  gateway: "src/api/zig/"
+  abi: "src/abi/"
+  ffi: "ffi/zig/"
+  specs: "specs/"
+  tests: "tests/"
+  site: "www/"
+
+---
+### [FILE_RELATIONSHIPS]
+files:
+  - name: "aerie_chora.deed"
+    role: "Universal AI entry point"
+    description: "Repo deed (standards#837) — manifest, ply tree, architecture law, policies. Consume this first."
+  - name: ".claude/CLAUDE.md"
+    role: "AI instructions"
+    description: "Project-specific agent instructions; the architecture law in agent-readable form."
+  - name: "build.zig"
+    role: "Gateway build"
+    description: "Zig 0.15.2+ build graph for aerie-gateway; -Dzig-api-* overrides."
+  - name: "Justfile"
+    role: "Task runner"
+    description: "Single entry point: setup/build/test/bench/lint/format/clean/release/install/man/cookbook."
+  - name: "src/api/rust"
+    role: "Tracked drift"
+    description: "NOT the API language. Do not build, extend, or migrate to it."

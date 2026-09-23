@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "src-abi"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  Formal type definitions with proofs. The ABI is Idris2; no other language may be used here.
+canonical_locations:
+  Foreignidr: "Foreign.idr"
+  Layoutidr: "Layout.idr"
+  Typesidr: "Types.idr"
+
+---
+### [FILE_RELATIONSHIPS]
+files:
+  - name: "Foreign.idr"
+    description: "FFI bindings"
+  - name: "Layout.idr"
+    description: "memory/layout types"
+  - name: "Types.idr"
+    description: "core ABI types"
+

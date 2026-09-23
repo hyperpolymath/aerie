@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "src"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  Estate architecture law: ABI = Idris2, FFI = Zig, API = Zig.
+canonical_locations:
+  abi: "abi/"
+  api: "api/"
+  core: "core/"
+  ui: "ui/"
+  stale: "stale/"
+
+---
+### [FILE_RELATIONSHIPS]
+files:
+  - name: "api"
+    description: "API plane: canonical Zig gateway, GraphQL + gRPC wire contracts, tracked-drift Rust crate"
+  - name: "abi"
+    description: "Idris2 ABI definitions"
+  - name: "core"
+    description: "Julia core"
+  - name: "ui"
+    description: "SOC HUD front-end"
+  - name: "stale"
+    description: "Stale vendored upstream (removal is a ROADMAP item)"
+

@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "configs"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  Nickel (conflow) configuration: configs/config.ncl is compiled/validated by the .conflow.yaml pipeline (generate -> validate against the CUE schema in schemas/).
+canonical_locations:
+  configncl: "config.ncl"
+
+---
+### [FILE_RELATIONSHIPS]
+files:
+  - name: "config.ncl"
+    description: "single source for generated configuration"
+

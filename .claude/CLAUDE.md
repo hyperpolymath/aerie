@@ -9,7 +9,7 @@ for tamper-evident responses, and a policy gate for access control.
 ## Architecture
 
 Estate architecture law (day 1, non-negotiable): **ABI = Idris2, FFI = Zig,
-API = Zig**. Never Zig, Rust, or C for these layers.
+API = Zig**. No other language (Rust, C, V, …) may be used for these layers.
 
 - **ABI**: Idris2 (`src/abi/`) — formal type definitions with proofs
 - **FFI**: Zig (`ffi/zig/`) — C-compatible implementation layer
@@ -18,7 +18,7 @@ API = Zig**. Never Zig, Rust, or C for these layers.
 - **Data**: Redis (cache/audit), VerisimDB (bitemporal, future)
 - **Container**: Podman Compose with Chainguard base images
 
-Zig (`src/api/v/`) was removed 2026-05-16 (estate-wide V ban). The
+The V implementation (`src/api/v/`) was removed 2026-05-16 (estate-wide V ban). The
 `src/api/rust/` crate and the old `MIGRATION.adoc` "→ Rust" text are
 off-policy drift — Rust is **not** an API language here; do not build,
 extend, or migrate to it. Canonical = the Zig gateway.

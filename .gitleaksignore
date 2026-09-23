@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
+# gitleaks fingerprint allowlist — reviewed historical false positives only.
+# Format: <fingerprint>:<path>:<rule>:<line>
+# Currently empty: no reviewed exceptions in aerie.

@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: MPL-2.0
+# Guix Package Policy — Guix is the sole package manager estate-wide;
+# Nix is banned (retired 2026-06-01). aerie is Guix-managed (guix.scm).
+name: Guix Package Policy
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Enforce Guix-only package policy
+        run: |
+          HAS_GUIX=$(find . -path ./.git -prune -o \( -name "*.scm" -o -name ".guix-channel" -o -name "guix.scm" \) -print 2>/dev/null | head -1)
+          HAS_NIX=$(find . -path ./.git -prune -o -name "*.nix" -print 2>/dev/null | head -1)
+
+          if [ -n "$HAS_GUIX" ]; then
+            echo "::notice::Guix packaging present: $HAS_GUIX"
+          else
+            echo "::warning::No Guix packaging found (guix.scm expected in Guix-managed repos)."
+          fi
+          if [ -n "$HAS_NIX" ]; then
+            echo "::error::Nix packaging found: $HAS_NIX — Nix is banned estate-wide (retired 2026-06-01); use Guix."
+            exit 1
+          fi
+          echo "::notice::No Nix packaging found. Guix-only policy holds."

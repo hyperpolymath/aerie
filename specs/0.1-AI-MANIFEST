@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "specs"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  Component specs in Nickel/K9 with guarded rendered AsciiDoc outputs. Changing specs/outputs without updating manifest.sha256 fails the pre-commit hook (just specs-hooks).
+canonical_locations:
+  components: "components/"
+  fragments: "fragments/"
+  outputs: "outputs/"
+  tools: "tools/"
+  k9: "k9/"
+
+---
+### [FILE_RELATIONSHIPS]
+files:
+  - name: "manifest.sha256"
+    description: "guard for outputs/"
+  - name: "tools/update_manifest.sh"
+    description: "regenerate guard"
+  - name: "tools/check_manifest.sh"
+    description: "verify guard"
+

@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Aerie — Readiness (CRG / TRG)
+:status: Active
+:revdate: 2026-09-23
+
+Single source of truth for the readiness grades. `just crg-grade` and
+`just crg-badge` read the **Current Grade:** line below. Rubrics:
+`hyperpolymath/standards` — `component-readiness-grades/` and
+`toolchain-readiness-grades/`.
+
+== Component Readiness Grade (CRG)
+
+**Current Grade:** D (RSR-Compliant)
+
+*Assessed: 2026-09-23, by the audit remediation pass (branch
+`arena/01a0cf8a-aerie`).*
+
+[cols="1,1,4", options="header"]
+|===
+|Criterion |Met? |Evidence
+
+|**X (Non-existent)**
+|PASSED
+|Repository exists with code (Zig gateway, Idris2 ABI, FFI) and specifications (specs/, K9).
+
+|**F (Failing)**
+|PASSED
+|No known failing state at source level. *Caveat:* no local build was executed in the audit sandbox (no toolchain available); CI is the build witness. This is recorded honestly rather than assumed.
+
+|**E (Embryonic)**
+|PASSED
+|README.md, EXPLAINME.adoc (claim-by-claim receipts), TOPOLOGY.md, ARCHITECTURE.md, per-layer READMEs + 0.1-AI-MANIFESTs, aerie_chora.deed (ABNF-validated), AFFIRMATION.adoc.
+
+|**D (RSR-Compliant)**
+|PASSED
+|LICENSE (MPL-2.0, correct per LICENCE-POLICY register) + LICENSES/ dual texts; SECURITY.md; CONTRIBUTING.md; CODE_OF_CONDUCT.md; MAINTAINERS.adoc; .editorconfig/.gitignore/.gitattributes/.tool-versions; Justfile (no Makefiles); guix.scm + sealed Containerfile; .machine_readable/ descriptiles; repo deed; CI: governance, codeql, scorecard, hypatia-scan (+ rust-ci, guix-policy, release, validation added 2026-09-23).
+
+|**C (Self-Validated)**
+|NOT YET
+|Requires: an executed, witnessed test pass (zig build test + idris2 suite + cargo test) in CI or a toolchain-equipped session; the Idris2 suite in tests/idris2/ is scaffolded and awaits its first type-check.
+
+|**B (Broadly Validated)**
+|NOT YET
+|Requires: external adoption/dependency evidence, published benchmarks, proof verification, sustained zero unresolved harm reports.
+
+|**A (Field-Proven)**
+|NOT YET
+|Out of current scope.
+|===
+
+== Toolchain Readiness Grade (TRG)
+
+**Current Grade:** X (Untested)
+
+*Assessed: 2026-09-23.* Honest starting grade per the TRG rubric: the
+toolchain (Zig 0.15.2+, Rust tracked-drift, Idris2, Julia, Guix, Podman)
+is declared via mise.toml/.tool-versions/guix.scm but has not yet been
+audited against the TRG criteria (component-by-component, with
+machine-checkable claims). First-audit checklist in ROADMAP.adoc Phase 7.
+
+== Grade history
+
+|===
+|Date |CRG |TRG |Note
+
+|2026-09-23
+|D
+|X
+|Audit remediation pass: structure, deed, docs, CI set completed; build/test witness still pending (no toolchain in audit sandbox).
+
+|2026-02-01
+|ungraded
+|ungraded
+|Repository created; no READINESS file existed (the `just crg-*` recipes read a nonexistent file).
+|===

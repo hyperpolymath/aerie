@@ -1,0 +1,102 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Aerie — Wiki Development Plan
+:toc: preamble
+
+Structured per the `metadatastician/berrywiki` pattern: three audiences,
+**maximum 3-ply depth** (no page nested deeper than three levels), and
+**maximum span of 7** at any layer (no home/index page links to more than
+seven children). Content is plain GitHub-compatible Markdown (the berrywiki
+ruling: wikis are the `.md` home; everything outside wikis stays `.adoc`).
+
+== Audience framework
+
+. **Users** — run, read, and trust the diagnostics.
+. **Platform maintainers** — operate the stack and the estate wiring.
+. **Developers** — extend the gateway, ABI, and specs.
+
+== Page map (≤3 ply, ≤7 span)
+
+=== Level 0 — Home (span 3, one per audience)
+
+| Page | Audience | Content
+
+| `Users`
+| users
+| First-run in five minutes; what each number on the HUD means; trust model (zero telemetry, proof envelopes); troubleshooting.
+
+| `Platform maintainers`
+| maintainers
+| Stack operations: compose/Podman, Cloudflare/WAF, retention, upgrades, the estate wiring (CI, submodules, mirrors).
+
+| `Developers`
+| developers
+| Architecture law, build system, spec pipeline, how to add a module end-to-end.
+
+=== Level 1 — Users (span 5)
+
+| Page | Content
+|------|-------
+| `Quick start`
+| Clone → `just setup` → dashboard; the four setup approaches (mirrors docs/SETUP.adoc).
+| `Reading the HUD`
+| Speed widget, path analysis, jitter charts, audit feed — what each region shows and how to read it.
+| `Trust & privacy`
+| Zero-telemetry claim, proof envelopes, what is and is never sent anywhere.
+| `Diagnosing common faults`
+| Routing interference, BGP hijack indicators, ISP throttling patterns — the three use cases, with worked examples.
+| `FAQ`
+| Port conflicts, keys, dual-use disclaimer.
+
+=== Level 1 — Platform maintainers (span 6)
+
+| Page | Content
+|------|-------
+| `Deploying the stack`
+| compose.yml, Podman, ports 4000/4001 + probes, health checks.
+| `Hardening`
+| Phase 3: WAF, mTLS, Cloudflare API Shield; dual-use exposure rules.
+| `Retention & audit`
+| Redis audit trail, SmokePing retention tiers, VerisimDB bitemporal target.
+| `Operations runbook`
+| Upgrades, rollback, log triage, the `just doctor`/`heal` loop.
+| `Estate wiring`
+| Submodules (network/*, qubes-sdp), CI wrappers, mirrors, dependabot.
+| `Monitoring the monitors`
+| Alerting (webhook/ntfy), retention triggers, SOC response.
+
+=== Level 1 — Developers (span 7)
+
+| Page | Content
+|------|-------
+| `Architecture law`
+| ABI = Idris2, FFI = Zig, API = Zig; the tracked-drift boundary (src/api/rust).
+| `Build & test`
+| build.zig, the Justfile verb matrix, `zig build test`, the Idris2 model suite, Guix/mise toolchains.
+| `Spec pipeline`
+| K9/SVC components, guarded outputs, `just specs*`, the manifest guard.
+| `Adding a module`
+| End-to-end: spec → Zig client → resolver → GraphQL field → HUD widget → tests → docs.
+| `ABI & proofs`
+| src/abi layout, proof envelopes, the LEAN4 targets (ROADMAP P1–P3).
+| `CI & gates`
+| The workflow set, traffic-light categories, dogfood gate, validation.
+| `Code style & estate policy`
+| Language policy, licence split, Oxford British English, commit rules.
+
+== Development order (scaffolding first)
+
+1. Home + the three audience pages (span 3) — the skeleton.
+2. Users pages (highest leverage; README already half-does this job).
+3. Developers: Build & test + Architecture law (agent-readability).
+4. Platform maintainers: Deploying + Hardening.
+5. Backfill the remaining pages as the features they describe land
+   (a page whose feature is ROADMAP carries a `status: planned` callout).
+
+== Invariants (enforced by review, berrywiki-style)
+
+* No page deeper than 3 levels.
+* No index page with more than 7 outbound page links.
+* Every page carries an `Audience:` and `Status:` header line.
+* Claims that assert behaviour must cite the code path or a spec output
+  (the EXPLAINME discipline, applied to the wiki).

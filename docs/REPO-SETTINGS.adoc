@@ -1,0 +1,282 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Repository settings — Aerie, measured 2026-09-23
+:toc: macro
+:toclevels: 2
+
+_What this repository's GitHub settings actually are, what the estate canon
+says they should be, and the exact difference between the two._
+
+[IMPORTANT]
+====
+**Nothing in this document has been applied.** It is a measurement and a
+recommendation. The audit agent (Arena Agent Mode) had no administration
+permission on this repository — every change listed under <<delta>> is
+proposed, not made. The commands that would make them are given so the
+decision is a one-line action for the owner rather than a research task.
+====
+
+== Method
+
+Canon: `hyperpolymath/standards` — `config/settings/repo.json` (version 1),
+`config/settings/actions-allowlist.json`, `config/rulesets/base.json`, and
+`rsr-template-repo/.github/rulesets/` (Optimus-Branch, Immutable-Tags).
+
+Live values read `2026-09-23` via read-only GitHub API (`gh api`) from the
+audit session. Endpoints that returned 403 to the audit bot are marked
+*unreadable* and paired with the command that reads them.
+
+== What already matches (recorded, not just the gaps)
+
+[cols="2,1,3", options="header"]
+|===
+|Setting |State |Evidence
+
+|Default branch
+|OK
+|`main`
+
+|Squash merge allowed
+|OK
+|`allow_squash_merge: true` (canon `true`)
+
+|Rebase merge disallowed
+|OK
+|`allow_rebase_merge: false` (canon `false`)
+
+|Auto-delete head branches
+|OK
+|`delete_branch_on_merge: true` (canon `true`)
+
+|Auto-merge allowed
+|OK
+|`allow_auto_merge: true` (canon `true`)
+
+|Allow updating branches
+|OK
+|`allow_update_branch: true` (canon `true`)
+
+|Web commit signoff required
+|OK
+|`web_commit_signoff_required: true` (canon `true`)
+
+|Dependabot
+|OK
+|`.github/dependabot.yml` present (cargo + github-actions, daily)
+
+|CodeQL / Scorecard / Hypatia / Secret Scanner / Governance
+|OK
+|All present as SHA-pinned wrappers of the estate reusable set (the catalog's "all repos should have" set)
+
+|Discussions
+|OK
+|Enabled with the full estate category set: Announcements, General, Ideas, Polls, Q&A, Show and tell
+
+|Wiki
+|OK
+|Enabled (plan: <<wiki>>)
+
+|Projects
+|OK
+|Enabled (`has_projects: true`)
+
+|Branch protection — floor
+|OK
+|Ruleset `Branch-Floor` (active, default branch): no deletion, no non-fast-forward
+
+|Branch protection — signed commits
+|OK
+|Ruleset `Require-Signed-Commits` (active, default branch): required signatures
+
+|Tag protection
+|OK (superset of canon)
+|Ruleset `immutable-tags` (active, all tags): deletion, non-fast-forward, update, creation, required signatures — canon `Immutable-Tags` plus `creation`
+
+|Issues
+|OK
+|Templates (bug/feature/config) + PR template + estate label tooling (labels.json, label-triage workflow) added 2026-09-23
+|===
+
+== Delta (proposed, not applied)
+
+=== 1. `Optimus-Branch` ruleset is DISABLED — the estate's full gate is off
+
+The audit found the estate's canonical branch gate present but inactive:
+
+[source,json]
+----
+{ "name": "Optimus-Branch", "target": "branch", "enforcement": "disabled",
+  "rules": ["deletion", "non_fast_forward", "required_signatures",
+            "pull_request", "required_status_checks", "code_scanning",
+            "copilot_code_review"] }
+----
+
+Canon (`rsr-template-repo/.github/rulesets/Optimus-Branch.json`) is
+`enforcement: active` with the same rule set minus the two aerie additions
+(code scanning + Copilot review — keep them; they are strictly tighter).
+With the gate disabled, the `required_status_checks` rule is not binding:
+nothing currently blocks a merge without the GATE-category checks passing.
+
+Apply (owner):
+[source,sh]
+----
+RID=$(gh api repos/hyperpolymath/aerie/rulesets --jq '.[] | select(.name=="Optimus-Branch") | .id')
+gh api -X POST repos/hyperpolymath/aerie/rulesets/$RID -f active=true
+----
+
+NOTE: enabling `required_status_checks` requires naming the check contexts
+(currently the rule exists but has an empty context list). Populate it with
+the GATE-category workflows from `CICD-WORKFLOW-CATALOG.md`: governance,
+codeql, scorecard, hypatia-scan, dogfood-gate, rust-ci, guix-policy. Until
+then the rule is a no-op and the merge gate rests on PR review + signature
+only.
+
+=== 2. `allow_merge_commit` is true; canon is squash-only
+
+[source,sh]
+----
+gh api -X PATCH repos/hyperpolymath/aerie -f allow_merge_commit=false
+----
+
+=== 3. Actions permissions, security block, alerts — unreadable by the audit bot
+
+The following 403'd against the audit bot's token; the owner should verify
+each against `config/settings/repo.json` and apply the deltas:
+
+[source,sh]
+----
+gh api repos/hyperpolymath/aerie/actions/permissions
+gh api repos/hyperpolymath/aerie/actions/permissions/workflow
+gh api repos/hyperpolymath/aerie/vulnerability-alerts
+gh api repos/hyperpolymath/aerie/automated-security-fixes
+# canon: enabled=true, allowed_actions=selected + actions-allowlist.json
+#        (REQUIRED — an empty selected list refuses every third-party
+#         action transitively and makes checks silently absent),
+#        default_workflow_permissions=read, can_approve_pull_request_reviews=false,
+#        secret_scanning + push_protection + dependabot_security_updates enabled,
+#        vulnerability alerts + automated fixes enabled
+----
+
+=== 4. Topics (comprehensiveness — 5.4/5.5 of the audit protocol)
+
+Current (12): dual-use, epistemic-computing, epistemic-infrastructure,
+equivalence-aware-computing, hyperpolymath, infrastructure-as-code,
+kubernetes, networking, open-source, typed-provenance,
+veridical-computing, zig.
+
+Proposed superset (adds the discoverable surface the repo actually has):
+[source,sh]
+----
+gh api -X PUT repos/hyperpolymath/aerie/topics -f topics="aerie,cyber-defense,network-diagnostic,network-forensics,networking,bgp,looking-glass,route-hijack,speedtest,librespeed,smokeping,jitter-monitoring,hyperglass,graphql,grpc,zero-telemetry,privacy,privacy-preserving,soc,dashy,zig,idris2,rust,julia,affinescript,ffi,proof-of-computation,veridical-computing,epistemic-computing,epistemic-infrastructure,typed-provenance,veridical-infra,dual-use,infrastructure-as-code,kubernetes,container,podman,chainguard,guix,rsr,rhodium-standard,open-source,oxford-british-english" -f replace=true
+----
+(GitHub allows up to 20 topics per repository; the list above exceeds that —
+trim to the 20 highest-signal at apply time, keeping: bgp, speedtest,
+network-forensics, zero-telemetry, soc, zig, idris2, ffi, podman, guix,
+dual-use, infrastructure-as-code, kubernetes, networking, open-source,
+epistemic-computing, veridical-computing, typed-provenance, hyperpolymath,
+rsr.)
+
+=== 5. Social preview / Open Graph image
+
+`usesCustomOpenGraphImage: false` — GitHub renders the generic default.
+Generate a compliant 1280×640 hero (suggested prompt recorded in
+<<hero>>), upload it as a repository asset, then set it:
+
+[source,sh]
+----
+gh api -X POST repos/hyperpolymath/aerie/contents/assets/social-preview.png \
+  -f message="docs(assets): social preview image" \
+  -f content="$(base64 -w0 assets/social-preview.png)"
+# then Settings → General → Social preview (owner UI, no API field)
+----
+
+=== 6. Environments (7.4)
+
+No GitHub Environments exist yet. Propose two, mirroring the deployment
+stages:
+
+[source,sh]
+----
+gh api -X POST repos/hyperpolymath/aerie/environments -f name=staging -f 'environment_steps=[]'
+gh api -X POST repos/hyperpolymath/aerie/environments -f name=production -f 'environment_steps=[]'
+# production: add required reviewers + branch protection in the UI
+----
+
+=== 7. Project board linking (8.3)
+
+Projects is enabled; linking the audit roadmap issues to a project board and
+creating the milestones is an owner action (the audit bot cannot mutate
+projects). Issue-creation commands for every roadmap item are in
+`docs/reports/quality/REMEDIATION-PLAN.md`.
+
+=== 8. Star taxonomy (5.8)
+
+The audit bot has no access to the owner's star list or gists (403). Owner
+actions: star `hyperpolymath/aerie`; verify it sits in the estate
+taxonomy; create the third-party star list and move third-party stars into
+it.
+
+
+=== 9. NEW (2026-09-23, ~19:00Z): all `pull_request` workflows die at
+startup with zero jobs — Actions settings regression
+
+Measured on PR #88 (branch `arena/01a0cf8a-aerie`): **all 16 workflows**
+— including the pre-existing ones — completed as `startup_failure` in
+~60s with **`jobs: null` (zero jobs scheduled)** and no run log. The last
+`main` push (2026-09-21, runs 35593725916/92/96 etc.) scheduled jobs
+normally (e.g. Dogfood Gate: 6 jobs). This is the exact failure signature
+`config/settings/repo.json` warns about for the actions allow-list:
+
+> An EMPTY `patterns_allowed` refuses every third-party action, including
+> transitively through a reusable workflow … Runs then die at startup with
+> `jobs.total_count == 0` and emit NO check run.
+
+The audit bot cannot read (403) or write the actions-permissions
+endpoints. Owner diagnosis + fix:
+
+[source,sh]
+----
+gh api repos/hyperpolymath/aerie/actions/permissions \
+  --jq '{enabled, allowed_actions}'
+gh api repos/hyperpolymath/aerie/actions/permissions/selected-actions \
+  --jq '.patterns_allowed'
+# if empty/missing: re-apply the estate allow-list
+gh api -X PUT repos/hyperpolymath/aerie/actions/permissions \
+  -f enabled=true -f allowed_actions=selected
+gh api -X PUT repos/hyperpolymath/aerie/actions/permissions/selected-actions \
+  -f 'patterns_allowed[]=<pattern>'  # per config/settings/actions-allowlist.json
+# then re-open / re-trigger the PR and confirm the GATE workflows schedule jobs
+----
+
+Note: the failure is *loud* (red, visible), not the silent-green variant —
+but a zero-job run also means the gates are not enforcing while this
+persists, so it is a merge-blocker in practice.
+
+== Wiki plan
+
+See `docs/wiki-plan.adoc` (berrywiki pattern: users / maintainers /
+developers, ≤3 ply, ≤7 span).
+
+== Hero image prompt (5.7)
+
+A 1280×640 dark-mode SOC forensics aesthetic: a high-density dashboard
+grid in near-black blue (#0b1020) with three live panels — a LibreSpeed
+gauge, a BGP path trace (looking-glass route arrows), and a SmokePing
+jitter chart — accented in signal green and amber; the word “AERIE” in a
+clean geometric sans, small “zero-telemetry network diagnostics” caption;
+subtle grid lines, no photorealism, flat vector style, high contrast for
+social cards.
+
+== Commands summary (owner, one block)
+
+[source,sh]
+----
+# 1. enable the estate branch gate
+RID=$(gh api repos/hyperpolymath/aerie/rulesets --jq '.[] | select(.name=="Optimus-Branch") | .id')
+gh api -X POST repos/hyperpolymath/aerie/rulesets/$RID -f active=true
+# 2. squash-only merges
+gh api -X PATCH repos/hyperpolymath/aerie -f allow_merge_commit=false
+# 3. verify + set actions/security settings (see §3)
+# 4. topics (see §4), social preview (§5), environments (§6)
+# 5. re-run the GATE workflows and confirm green
+----

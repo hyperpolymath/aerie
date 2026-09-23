@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= Dev Container
+
+Sealed development environment for aerie (Chainguard Wolfi base,
+non-root user, full build/lint toolchain).
+
+== Usage
+
+* **VS Code**: "Dev Containers: Reopen in Container" (container from
+  `.devcontainer/Containerfile`).
+* **Manual**: `podman build -t aerie-dev -f .devcontainer/Containerfile .`
+  then `podman run -it -v "$PWD":/workspaces/aerie aerie-dev just doctor`.
+
+The production image is the root `Containerfile` (two-stage, static
+runtime); this file is its development twin with the lint/security
+tooling added.

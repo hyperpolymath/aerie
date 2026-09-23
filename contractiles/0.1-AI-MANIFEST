@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: MPL-2.0
+---
+### [META]
+id: "contractiles"
+version: "1.0.0"
+context:
+  - "https://a2ml.org/ns/v2"
+
+---
+### [AI_MANIFEST]
+description: |
+  Must (deploy state), Trust, Dust, and Intent contractiles — machine-checked deployment contracts for the aerie stack.
+canonical_locations:
+  must_Mustfile: "must/Mustfile"
+  trust_Trustfilea2ml: "trust/Trustfile.a2ml"
+  dust_Dustfile: "dust/Dustfile"
+  intend_Intentfilea2ml: "intend/Intentfile.a2ml"
+
+---
+### [FILE_RELATIONSHIPS]
+files:
+  - name: "must/Mustfile"
+    description: "deployment state contract"
+

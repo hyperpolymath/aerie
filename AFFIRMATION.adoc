@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= AFFIRMATION — Aerie, as of 2026-09-23 (final stamp)
+:toc: macro
+:toclevels: 2
+:std-docs: https://github.com/hyperpolymath/standards/blob/main/docs
+
+_the No-Bullshit file: what we affirm was true and checkable at this moment._
+
+[NOTE]
+====
+This file conforms to *profile A (evidential)* of the
+link:{std-docs}/AFFIRMATION-STANDARD.adoc[AFFIRMATION authoring standard].
+An affirmation is a solemn declaration of the truth of a statement, made by
+someone who declines to swear an oath — our truth-as-best-believed at a
+stamped instant, binding on our honesty, not a claim of infallibility.
+
+This file is *optional*. Delete it rather than carry an affirmation you have
+not re-verified — a stale affirmation is worse than none.
+====
+
+== The verifiable anchor
+
+[cols="2,3", options="header"]
+|===
+|Field |Value
+
+|Branch
+|`arena/01a0cf8a-aerie` (branched from `main @ 0854656`)
+
+|Anchor SHA (state affirmed)
+|`5b9f94dce3caf9ca273a7e940f7a8d5f270d1b4b`
+
+|Anchor tree
+|`b58e4b596efa6d37c295c6794aee8fd019b972cf`
+
+|UTC timestamp
+|2026-09-23T18:50Z (final re-stamp; this file replaces the first stamp of
+the same session — chain hash of the previous content:
+`56ae60c7003010be3cac440d720563c090f9f5561c1a7ec9c0c7836011b04dfb`)
+
+|Working-tree delta at affirmation
+|Clean — `git status` reports nothing to commit; 8 audit commits on the
+branch, all conventional (the new commit-msg hook enforced this on every
+one, and was observed to reject two overlong subjects during the session)
+
+|Toolchain
+|Python 3.11.2 (deed validation), git 2.x, GitHub API (read-only
+measurements). *No Zig/Cargo/Idris2/Guix were available in the audit
+sandbox* — build/test claims are deliberately absent, not forgotten.
+|===
+
+== What we affirm, and how it was checked
+
+1. **The repo deed conforms to the normative DEED ABNF (v1.0.0)** —
+   re-verified at the final stamp:
+   `python3 standards/1-formats/deed/tools/deed_lint.py aerie_chora.deed`
+   → `OK aerie_chora.deed`, exit 0 (run in this session against the final
+   file at the anchor SHA).
+
+2. **Every gitlink has a `.gitmodules` mapping.** `git submodule status`
+   lists all eight submodules without error (it fataled before the audit);
+   all eight target repositories exist in the estate (GitHub API).
+
+3. **No estate-banned language surface remains outside tracked, documented
+   drift.** File census: Deno config deleted (banned 2026-09-22); no
+   `.ts`/`.res`/`.v`/`flake.nix` tracked; `src/stale/` explicitly marked
+   stale and roadmap-gated; `src/api/rust/` retained on purpose as tracked
+   drift named in `.claude/CLAUDE.md`, `ARCHITECTURE.md`, the deed, and the
+   roadmap (removal is D1, an owner decision).
+
+4. **The licence is MPL-2.0 (code) / CC-BY-SA-4.0 (prose docs).** aerie is
+   not in the PMPL register (checked against LICENCE-POLICY §2); the
+   tracked `LICENSE` is MPL-2.0 full text; `LICENSES/` carries both texts;
+   the README badges read accordingly.
+
+5. **The CI wrapper set is complete per the estate catalog and
+   SHA-pinned.** 16 workflows: the catalog's "all repos" set
+   (governance, codeql, scorecard, hypatia-scan) plus rust-ci (Rust
+   workspace exists), guix-policy (Guix-managed), release, validation,
+   dogfood-gate, boj-build, casket-pages, instant-sync, mirror, labels,
+   label-triage, push-email-notify, secret-scanner. Every third-party
+   `uses:` carries a full 40-hex commit SHA.
+
+6. **The GitHub settings record is a measurement, not an assertion.**
+   `docs/REPO-SETTINGS.adoc` records 16 settings already at canon (incl.
+   Branch-Floor, Require-Signed-Commits, immutable-tags active; full
+   discussion category set) and names the exact deltas — foremost that the
+   estate's `Optimus-Branch` merge gate exists but is *disabled* — with
+   one-line owner commands. Nothing was applied; the audit bot had no
+   admin permission, and that is stated in the file.
+
+7. **The readiness grades are honest.** CRG D (RSR-Compliant): structure,
+   docs, deed, and CI are complete; C is *not* claimed because no build or
+   test was executed in the audit sandbox. TRG X (Untested): the toolchain
+   is declared (mise/guix.scm/.tool-versions) but not yet audited against
+   the TRG rubric (first audit: roadmap T2).
+
+8. **What we do NOT affirm:** that the project builds, that its tests
+   pass, or that the Idris2 model suite type-checks. All three await their
+   first executed witness (CI, or a toolchain-equipped session); the
+   `tests/idris2/README.adoc` and `READINESS.adoc` say exactly that in
+   their own text.
+
+== The epistemic contract
+
+This document records the auditor's *best belief* at the timestamp above.
+It is *not* a guarantee of correctness. The only guarantee is *no
+intentional overclaim*: an honest claim that later turns out false is an
+error to be fixed — not a lie. Re-run the checks to falsify any line above;
+that is the point.
