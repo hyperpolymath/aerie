@@ -216,6 +216,42 @@ actions: star `hyperpolymath/aerie`; verify it sits in the estate
 taxonomy; create the third-party star list and move third-party stars into
 it.
 
+
+=== 9. NEW (2026-09-23, ~19:00Z): all `pull_request` workflows die at
+startup with zero jobs — Actions settings regression
+
+Measured on PR #88 (branch `arena/01a0cf8a-aerie`): **all 16 workflows**
+— including the pre-existing ones — completed as `startup_failure` in
+~60s with **`jobs: null` (zero jobs scheduled)** and no run log. The last
+`main` push (2026-09-21, runs 35593725916/92/96 etc.) scheduled jobs
+normally (e.g. Dogfood Gate: 6 jobs). This is the exact failure signature
+`config/settings/repo.json` warns about for the actions allow-list:
+
+> An EMPTY `patterns_allowed` refuses every third-party action, including
+> transitively through a reusable workflow … Runs then die at startup with
+> `jobs.total_count == 0` and emit NO check run.
+
+The audit bot cannot read (403) or write the actions-permissions
+endpoints. Owner diagnosis + fix:
+
+[source,sh]
+----
+gh api repos/hyperpolymath/aerie/actions/permissions \
+  --jq '{enabled, allowed_actions}'
+gh api repos/hyperpolymath/aerie/actions/permissions/selected-actions \
+  --jq '.patterns_allowed'
+# if empty/missing: re-apply the estate allow-list
+gh api -X PUT repos/hyperpolymath/aerie/actions/permissions \
+  -f enabled=true -f allowed_actions=selected
+gh api -X PUT repos/hyperpolymath/aerie/actions/permissions/selected-actions \
+  -f 'patterns_allowed[]=<pattern>'  # per config/settings/actions-allowlist.json
+# then re-open / re-trigger the PR and confirm the GATE workflows schedule jobs
+----
+
+Note: the failure is *loud* (red, visible), not the silent-green variant —
+but a zero-job run also means the gates are not enforcing while this
+persists, so it is a merge-blocker in practice.
+
 == Wiki plan
 
 See `docs/wiki-plan.adoc` (berrywiki pattern: users / maintainers /

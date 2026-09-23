@@ -23,6 +23,7 @@ decision).
 | S4 | Merge gate inactive: `Optimus-Branch` ruleset **disabled**; `allow_merge_commit: true` vs canon squash-only | measured 2026-09-23 | **OWNER** — exact commands in `docs/REPO-SETTINGS.adoc` §1–2 |
 | S5 | 50 `.zig-cache` build artefacts tracked in git | audit 2026-09-23 | **FIXED** — de-tracked, `.gitignore` corrected (they were a leak path for local build state) |
 | S6 | Actions permissions / security block / vuln alerts unreadable to audit bot (403) | measured 2026-09-23 | **OWNER** — verify commands in `docs/REPO-SETTINGS.adoc` §3 |
+| S7 | **All `pull_request` workflows `startup_failure` with zero jobs** on PR #88 (main push 2026-09-21 scheduled jobs normally) — the estate-documented actions allow-list failure signature | measured 2026-09-23 | **OWNER (merge-blocker)** — diagnose + re-apply allow-list per `docs/REPO-SETTINGS.adoc` §9 |
 
 ## Quality findings
 
