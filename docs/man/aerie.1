@@ -1,0 +1,173 @@
+'\" SPDX-License-Identifier: CC-BY-SA-4.0
+'\" Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+.TH AERIE 1 "2026-09-23" "aerie 0.4.0" "Aerie User Commands"
+.SH NAME
+aerie \ \- cyber-focused network diagnostic suite (CF-NDS)
+.SH SYNOPSIS
+.B aerie-launcher.sh
+.RI "[ --start | --stop | --status | --auto | --browser | --web | --integ | --disinteg | --help ]"
+.br
+.B just
+.RI "<recipe>  [recipe-args...]"
+.SH DESCRIPTION
+.B Aerie
+is a zero-telemetry, high-assurance alternative to commercial speedtests:
+LibreSpeed (bandwidth), Hyperglass (BGP path visibility), SmokePing (jitter
+persistence), fronted by a Zig gateway that wraps every response in a proof
+envelope and routes every request through a policy gate. The gateway serves
+GraphQL and REST on port 4000 and a length-prefixed gRPC protocol on port
+4001.
+.PP
+The
+.B aerie-launcher.sh
+entry point is a standards-compliant, launch-scaffolder-generated
+cross-platform launcher (process runtime: keep-open lifecycle, desktop-tools
+resolution ladder, idempotent desktop integration).
+.SH LAUNCHER OPTIONS
+.TP
+.B \-\-start
+Start the gateway process (default when no mode flag is given).
+.TP
+.B \-\-stop
+Stop the running process.
+.TP
+.B \-\-status
+Show running status (PID, uptime, log tail).
+.TP
+.B \-\-auto
+Alias for
+.B \-\-start
+(auto-attach behaviour).
+.TP
+.B \-\-browser , \-\-web
+Open the SOC HUD front-end in the browser.
+.TP
+.B \-\-integ
+Install the desktop entry, shortcut and icon (idempotent).
+Pass
+.B \-\-force
+to reinstall over an existing integration.
+.TP
+.B \-\-disinteg
+Remove everything
+.B \-\-integ
+installed (idempotent).
+.TP
+.B \-\-help , \-\-h
+Print usage and exit.
+.SH JUSTFILE RECIPES
+The Justfile is the single entry point for builds and checks.
+High-arity reference (run
+.B just \-\-list
+in-tree for the live set):
+.TP
+.B setup
+First-time setup:
+.B doctor
+then
+.B heal
+(installs just if missing, platform detection).
+.TP
+.B build , build-release
+Compile the Zig gateway (debug / ReleaseSafe).
+.TP
+.B test
+In-tree suites: zig unit tests
+(BR zig build test),
+the Idris2 proven-tests suite
+(BR tests/idris2),
+the tracked-drift Rust crate tests, and the submodule suites.
+.TP
+.B tests
+Alias of the original submodule-delegating test recipe (kept).
+.TP
+.B bench
+Run the benchmark stubs (full benchmark suite: ROADMAP Phase 7).
+.TP
+.B lint
+shellcheck + typos across the repo.
+.TP
+.B format
+shfmt (shell) and zig fmt (FFI) where available.
+.TP
+.B clean
+Remove regenerable build artefacts (zig-out, .zig-cache, rust target/).
+.TP
+.B security
+gitleaks + trivy file-system scan (degrades gracefully when absent).
+.TP
+.B audit
+Dependency audit (cargo audit for the tracked-drift crate).
+.TP
+.B assail
+panic-attack pre-commit scan (when the tool is installed).
+.TP
+.B quality
+lint + tests.
+.TP
+.B doctor , heal
+Toolchain health check / automatic repair.
+.TP
+.B release , install
+Stage / install the release binary and the man page
+(BR PREFIX overridable, default /usr/local).
+.TP
+.B guix-shell
+Enter the Guix toolchain environment from guix.scm.
+.TP
+.B container-build
+Build the two-stage OCI image (root Containerfile, Podman).
+.TP
+.B specs , specs-check , specs-hooks , specs-unlock , specs-verify
+K9 spec pipeline: regenerate the guarded manifest, verify it, install the
+guarding pre-commit hook, or unlock outputs for regeneration.
+.TP
+.B man , cookbook
+Locate the man page / generate docs/just-cookbook.adoc.
+.TP
+.B crg-grade , crg-badge
+Print the CRG grade / render its badge (source of truth: READINESS.adoc).
+.TP
+.B tour , help-me
+Guided project tour / common-workflow help.
+.SH ENVIRONMENT
+.TP
+.B LIBRESPEED_URL , HYPERGLASS_URL , SMOKEPING_URL
+Backend probe endpoints for the gateway clients.
+.TP
+.B REDIS_URL
+Cache + audit trail store.
+.TP
+.B AERIE_API_KEY
+Policy-gate key (per-key rate limiting).
+.TP
+.B AERIE_HTTP_PORT , AERIE_GRPC_PORT
+Gateway ports (default 4000 / 4001).
+.SH FILES
+.TP
+.B aerie_chora.deed
+Repo deed \ \- universal AI entry point (standards#837).
+.TP
+.B .claude/CLAUDE.md
+Project-specific AI instructions (architecture law).
+.TP
+.B docs/SETUP.adoc
+The four setup approaches.
+.TP
+.B guix.scm
+Reproducible toolchain manifest.
+.TP
+.B compose.yml
+Forensics Bridge stack (gateway, librespeed, smokeping, hyperglass, redis).
+.SH SEE ALSO
+.BR TOPOLOGY.md ,
+.BR EXPLAINME.adoc ,
+.BR ARCHITECTURE.md ,
+.BR ROADMAP.adoc ,
+.BR AFFIRMATION.adoc .
+.SH STANDARDS
+This programme's documentation and dialogue are maintained in Oxford British
+English. Estate architecture law: ABI = Idris2, FFI = Zig, API = Zig.
+.SH BUGS
+Report via the GitHub issue tracker (templates in .github/ISSUE_TEMPLATE/).
+Security reports: SECURITY.md (private disclosure first).

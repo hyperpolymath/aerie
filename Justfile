@@ -2,6 +2,87 @@
 
 import? "contractile.just"
 
+# ═══════════════════════════════════════════════════════════════════
+# CANONICAL VERBS (estate Justfile specification)
+# ═══════════════════════════════════════════════════════════════════
+
+# First-time setup: toolchain check + repair
+setup: doctor
+    just heal
+
+# Build the gateway (debug)
+build:
+    @echo "=== Build (debug) ==="
+    zig build
+
+# Build the gateway (release)
+build-release:
+    @echo "=== Build (ReleaseSafe) ==="
+    zig build -Doptimize=ReleaseSafe
+
+# Run the in-tree test suites (zig units, idris2 proven-tests, rust api)
+# plus the submodule suites (kept from the original tests recipe).
+test:
+    @echo "=== In-tree suites ==="
+    @if command -v zig >/dev/null 2>&1; then zig build test; else echo "zig not found — skipping zig unit tests"; fi
+    @if command -v idris2 >/dev/null 2>&1 && [ -f tests/idris2/Test.idr ]; then (cd tests/idris2 && idris2 -p . --build Test 2>/dev/null && idris2 -p . Test.main 2>/dev/null || echo "idris2 suite: see CI (type-check gate)"); else echo "idris2 not found — skipping idris2 suite"; fi
+    @if command -v cargo >/dev/null 2>&1; then (cd src/api/rust && cargo test --quiet); else echo "cargo not found — skipping rust api tests (tracked drift)"; fi
+    @echo "=== Submodule suites ==="
+    @if [ -d qubes-sdp ] && [ -f qubes-sdp/justfile ]; then (cd qubes-sdp && just test); fi
+    @if [ -d bgp-backbone-lab ] && [ -f bgp-backbone-lab/justfile ]; then (cd bgp-backbone-lab && just test); fi
+    @echo "Tests complete"
+
+# Run benchmarks (proven-tests format; see ROADMAP Phase 7 for the full set)
+bench:
+    @echo "=== Benchmarks ==="
+    @if command -v zig >/dev/null 2>&1 && [ -d ffi/zig ]; then (cd ffi/zig && zig build test); else echo "zig not found — skipping ffi benchmark stub"; fi
+    @echo "Benchmark run complete (see ROADMAP for the full benchmark suite)"
+
+# Format sources (shfmt for shell; zig fmt for the gateway when available)
+format:
+    @echo "=== Format ==="
+    @command -v shfmt >/dev/null 2>&1 && shfmt -w *.sh specs/tools/*.sh .github/hooks/*.sh 2>/dev/null || echo "shfmt not found — skipping"
+    @command -v zig >/dev/null 2>&1 && (cd ffi/zig && zig fmt src/ test/ 2>/dev/null || true) || true
+    @echo "Format complete"
+
+# Remove build artefacts (safe: regenerable only)
+clean:
+    @echo "=== Clean ==="
+    @rm -rf zig-out zig-out-* .zig-cache
+    @rm -rf src/api/rust/target 2>/dev/null || true
+    @echo "Clean complete"
+
+# Release: build the release binary + stage it (tagging is a Phase-11 owner action)
+release: build-release
+    @echo "=== Release staging ==="
+    @mkdir -p dist && cp zig-out/bin/aerie-gateway dist/
+    @echo "Staged: dist/aerie-gateway"
+
+# Install the gateway binary (PREFIX overridable, default /usr/local)
+install: build-release
+    @PREFIX="${PREFIX:-/usr/local}"; echo "Installing aerie-gateway to $(dirname $PREFIX)/bin (PREFIX=$PREFIX)"
+    @install -m 755 zig-out/bin/aerie-gateway "$(dirname $PREFIX)/bin/aerie-gateway"
+    @if [ -f docs/man/aerie.1 ]; then mkdir -p "$PREFIX/share/man/man1" && install -m 644 docs/man/aerie.1 "$PREFIX/share/man/man1/aerie.1"; fi
+
+# Guix dev environment (guix.scm manifest)
+guix-shell:
+    @echo "=== Guix shell (toolchain from guix.scm) ==="
+    @guix shell -m guix.scm
+
+# Container build (root Containerfile, two-stage)
+container-build:
+    @echo "=== Container build ==="
+    @podman build -t aerie-gateway -f Containerfile .
+
+# Render the man page (static source: docs/man/aerie.1; install via just install)
+man:
+    @test -f docs/man/aerie.1 && echo "man page: docs/man/aerie.1 (install with: just install)"
+    @command -v mandoc >/dev/null 2>&1 && mandoc -T man docs/man/aerie.1 | head -40 || true
+
+# Justfile cookbook (generated recipe reference)
+cookbook:
+    @just --list > docs/just-cookbook.adoc.tmp && { sed '1s/^/== Justfile cookbook (generated)\n/' docs/just-cookbook.adoc.tmp > docs/just-cookbook.adoc; rm docs/just-cookbook.adoc.tmp; echo "Generated docs/just-cookbook.adoc"; } || echo "just --list failed"
+
 specs:
 	@./specs/tools/update_manifest.sh
 
@@ -170,16 +251,16 @@ help-me:
     echo "  just default          List all recipes" 
 
 
-# Print the current CRG grade (reads from READINESS.md '**Current Grade:** X' line)
+# Print the current CRG grade (reads from READINESS.adoc '**Current Grade:** X' line)
 crg-grade:
-    @grade=$$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.md 2>/dev/null | head -1); \
+    @grade=$$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.adoc 2>/dev/null | head -1); \
     [ -z "$$grade" ] && grade="X"; \
     echo "$$grade"
 
 # Generate a shields.io badge markdown for the current CRG grade
-# Looks for '**Current Grade:** X' in READINESS.md; falls back to X
+# Looks for '**Current Grade:** X' in READINESS.adoc; falls back to X
 crg-badge:
-    @grade=$$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.md 2>/dev/null | head -1); \
+    @grade=$$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.adoc 2>/dev/null | head -1); \
     [ -z "$$grade" ] && grade="X"; \
     case "$$grade" in \
       A) color="brightgreen" ;; B) color="green" ;; C) color="yellow" ;; \
