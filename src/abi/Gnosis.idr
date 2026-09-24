@@ -56,9 +56,10 @@ record GnosisRequest where
   reqBody   : Bits64
   reqBodyLen: Bits32
 
-||| V2 edge request: v1 plus the raw query (no `?`) and parallel
-||| header name/value arrays. `headerCount` entries are valid; the
-||| arrays themselves are NULL when `headerCount` is 0.
+||| V2 edge request: v1 plus the raw query (no `?`), parallel header
+||| name/value arrays, and the per-connection response scratch.
+||| `headerCount` entries are valid; the arrays themselves are NULL
+||| when `headerCount` is 0.
 public export
 record GnosisRequestV2 where
   constructor MkGnosisRequestV2
@@ -73,6 +74,12 @@ record GnosisRequestV2 where
   reqV2HeaderNames : Bits64
   reqV2HeaderValues: Bits64
   reqV2HeaderCount : Bits32
+  ||| Per-connection response scratch, owned by the server: it outlives
+  ||| the handler call (the socket write happens after the handler
+  ||| returns and frees handler-lifetime arenas). Handlers copy
+  ||| arena/stack-lifetime response bodies here.
+  reqV2RespScratch    : Bits64
+  reqV2RespScratchLen : Bits32
 
 ||| Edge response written by a handler; flushed by the server loop.
 public export

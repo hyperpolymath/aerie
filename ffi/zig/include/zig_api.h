@@ -142,6 +142,12 @@ typedef struct {
     const char *const *header_names;   /**< NULL-terminated name strings, or NULL. */
     const char *const *header_values;  /**< Parallel value strings, or NULL. */
     uint32_t       header_count;   /**< Number of valid header entries. */
+    uint8_t       *resp_scratch;   /**< Per-connection response buffer. HANDLERS:
+                                        response bodies whose lifetime would end
+                                        with the handler (arenas, stacks) MUST be
+                                        copied here — the server writes after the
+                                        handler returns and frees the scratch. */
+    uint32_t       resp_scratch_len; /**< Byte length of resp_scratch. */
 } GnosisRequestV2;
 
 /** Response written by an edge handler. */

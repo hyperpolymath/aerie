@@ -41,6 +41,8 @@ pub const GnosisRequestV2 = extern struct {
     header_names: ?[*]const ?[*:0]const u8,
     header_values: ?[*]const ?[*:0]const u8,
     header_count: u32,
+    resp_scratch: ?[*]u8,
+    resp_scratch_len: u32,
 };
 
 pub const GnosisResponse = extern struct {
@@ -63,6 +65,7 @@ const MAX_CONNECTIONS: u32 = 64;          // concurrent connection cap
 const MAX_HEADER_BYTES: usize = 16 * 1024; // header block cap
 const MAX_BODY_BYTES: usize = 1 << 20;   // 1 MiB
 const MAX_HEADERS: usize = 64;
+const RESP_SCRATCH_BYTES: usize = 128 * 1024; // per-connection response scratch
 const READ_TIMEOUT_S: u32 = 10;
 const BACKLOG: u32 = 128;
 
@@ -438,6 +441,13 @@ fn handleConn(srv: *Server, conn: std.net.Server.Connection) void {
         .body_len = 0,
     };
 
+    // Response scratch: gnosis-owned, outlives the handler call, freed
+    // after the socket write (function scope — a block-scoped defer would
+    // free it before writeGnosisResponse, the exact bug class this buffer
+    // exists to prevent).
+    const scratch = lib_alloc.alloc(u8, RESP_SCRATCH_BYTES) catch null;
+    defer if (scratch) |sc| lib_alloc.free(sc);
+
     if (srv.handler_v2) |h2| {
         var names: [MAX_HEADERS]?[*:0]const u8 = undefined;
         var values: [MAX_HEADERS]?[*:0]const u8 = undefined;
@@ -454,6 +464,8 @@ fn handleConn(srv: *Server, conn: std.net.Server.Connection) void {
             .header_names = if (req.header_count > 0) &names else null,
             .header_values = if (req.header_count > 0) &values else null,
             .header_count = @intCast(req.header_count),
+            .resp_scratch = if (scratch) |sc| sc.ptr else null,
+            .resp_scratch_len = if (scratch) |sc| @intCast(sc.len) else 0,
         };
         h2(&v2, &resp);
     } else if (srv.handler) |h1| {
@@ -523,6 +535,8 @@ test "gnosis: v1/v2 wire structs match zig_api.h layout" {
     try std.testing.expectEqual(@offsetOf(h.GnosisRequest, "body_len"), @offsetOf(GnosisRequest, "body_len"));
     try std.testing.expectEqual(@sizeOf(h.GnosisRequestV2), @sizeOf(GnosisRequestV2));
     try std.testing.expectEqual(@offsetOf(h.GnosisRequestV2, "header_count"), @offsetOf(GnosisRequestV2, "header_count"));
+    try std.testing.expectEqual(@offsetOf(h.GnosisRequestV2, "resp_scratch"), @offsetOf(GnosisRequestV2, "resp_scratch"));
+    try std.testing.expectEqual(@offsetOf(h.GnosisRequestV2, "resp_scratch_len"), @offsetOf(GnosisRequestV2, "resp_scratch_len"));
     try std.testing.expectEqual(@sizeOf(h.GnosisResponse), @sizeOf(GnosisResponse));
     try std.testing.expectEqual(@offsetOf(h.GnosisResponse, "body_len"), @offsetOf(GnosisResponse, "body_len"));
 }
