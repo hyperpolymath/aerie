@@ -58,6 +58,28 @@ https://github.com/hyperpolymath/aerie/pulls[hyperpolymath/aerie].
 * `.claude/CLAUDE.md` — "Never Zig, Rust, or C" self-contradiction (Zig IS the
   API language) and the "Zig (src/api/v/)" mislabel corrected.
 
+=== Added
+
+* `src/abi/Gnosis.idr` — Idris2 ABI declarations for the gnosis server
+  pool and service connector pool (superset-compatible with
+  developer-ecosystem/zig-api), plus the **GnosisRequestV2** extension:
+  the raw query string and request headers, both stripped by the v1
+  surface (the deployed gateway could never see `X-Api-Key` or
+  `?target=`-style parameters — v2 fixes the starved policy gate and
+  resolvers at the ABI level).
+* `ffi/zig/` in-repo implementation of the uapi surface: threaded
+  HTTP/1.1 gnosis server (`gnosis.zig`), outbound connector pool
+  (`connector.zig`), C header `include/zig_api.h`. The build is
+  self-contained — no external clones, no private libproven_ffi, no
+  absolute paths — and asserts ABI layout against the header in tests.
+
+=== Changed
+
+* `build.zig` rewritten: one build graph (FFI library + gateway) from
+  repository sources; `zig build` and `zig build test` now succeed from
+  a fresh clone (first time in the repo's public history).
+* `Containerfile` builds self-contained (no developer-ecosystem clone).
+
 === Removed
 
 * `src/api/rust/` (the Rust twin crate) + root `Cargo.toml`/`Cargo.lock` —
