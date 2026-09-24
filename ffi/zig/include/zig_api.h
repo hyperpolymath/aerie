@@ -223,6 +223,61 @@ void uapi_connector_destroy(uint8_t slot);
 /** Current UAPI_CONNECTOR_* tag for `slot`. */
 uint8_t uapi_connector_state(uint8_t slot);
 
+/* ============================================================================
+ * Forensic search engine — UNTRUSTED (ffi/zig/src/kanren.zig)
+ *
+ * Design: docs/design/forensic-stack.adoc. The engine emits candidate
+ * attack paths as flat derivations; the trusted Idris2 kernel
+ * (src/abi/Forensics.idr, checkReach) accepts or rejects each against
+ * the evidence. A solver bug can only lose answers, never forge one.
+ * ========================================================================== */
+
+/** Rule tags for RawStep. */
+#define KANREN_RULE_LATERAL 0
+#define KANREN_RULE_EXFIL   1
+#define KANREN_RULE_ENTRY   2
+
+/** One raw step: a rule applied to a fact-id. Untrusted until checked. */
+typedef struct {
+    uint32_t fact_id; /**< Index into the evidence table. */
+    uint8_t  rule;    /**< KANREN_RULE_*. */
+    uint8_t  _pad;
+    uint16_t _pad2;
+} RawStep;
+
+/** A candidate derivation (flat step list). Arena-owned until kanren_free. */
+typedef struct {
+    const RawStep *steps; /**< NULL when len is 0. */
+    uint32_t       len;
+} RawDeriv;
+
+/** Add one observed flow to the evidence table. Fact-id or 0xFFFFFFFF. */
+uint32_t kanren_add_flow(
+    const char *src,
+    const char *dst,
+    uint16_t    port,
+    uint64_t    bytes
+);
+
+/** Clear the evidence table and release the derivation arena. */
+void kanren_clear(void);
+
+/** Release the derivation arena; callers hold nothing after this. */
+void kanren_free(void);
+
+/**
+ * Depth-bounded search: candidate paths from `src` ending in an exfil
+ * step. On return, *out points at an arena-owned RawDeriv array (valid
+ * until kanren_free). Returns the count. A count of 0 means "no
+ * candidate within budget" — distinct from "no path exists"; max_depth
+ * is a declared resource grade on the query (tropical budget seam).
+ */
+uint32_t kanren_attack_paths(
+    const char        *src,
+    const RawDeriv   **out,
+    uint32_t           max_depth
+);
+
 #ifdef __cplusplus
 }
 #endif

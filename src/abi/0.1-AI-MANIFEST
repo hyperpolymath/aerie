@@ -14,14 +14,20 @@ canonical_locations:
   Foreignidr: "Foreign.idr"
   Layoutidr: "Layout.idr"
   Typesidr: "Types.idr"
+  Gnosisidr: "Gnosis.idr"
+  Forensicsidr: "Forensics.idr"
 
 ---
 ### [FILE_RELATIONSHIPS]
 files:
   - name: "Foreign.idr"
-    description: "FFI bindings"
+    description: "FFI bindings (libaerie surface)"
   - name: "Layout.idr"
     description: "memory/layout types"
   - name: "Types.idr"
     description: "core ABI types"
+  - name: "Gnosis.idr"
+    description: "gnosis server + connector pool C ABI (libzig_api surface, incl. GnosisRequestV2)"
+  - name: "Forensics.idr"
+    description: "forensic kernel: evidence-indexed derivations, retention, warrants (port-and-reprove of echo-types/epistemic-types; design: docs/design/forensic-stack.adoc)" 
 

@@ -60,6 +60,18 @@ https://github.com/hyperpolymath/aerie/pulls[hyperpolymath/aerie].
 
 === Added
 
+* Forensic stack FS-0 (design: `docs/design/forensic-stack.adoc`) —
+  untrusted search, trusted checking (de Bruijn criterion):
+  `src/abi/Forensics.idr` (Idris2 kernel ABI: Retention restating
+  echo-types' thin poset keep <= residue <= forget, evidence-indexed
+  `Lateral`/`Reach`, `checkReach` signature, `CertificateCheck` +
+  non-factive `Warrant` restating epistemic-types' ProofTransport/Warrant
+  surfaces — port-and-reprove, Agda/Lean repos cited as authority) and
+  `ffi/zig/src/kanren.zig` (UNTRUSTED engine: evidence table,
+  depth-bounded search emitting `RawStep` derivations over the `kanren_*`
+  C ABI; budgeted "no answer within depth" is distinct from "no answer
+  exists" — the tropical budget seam). Not yet type-checked in Idris2
+  (no toolchain in sandbox; CI is the witness, per estate convention).
 * `src/abi/Gnosis.idr` — Idris2 ABI declarations for the gnosis server
   pool and service connector pool (superset-compatible with
   developer-ecosystem/zig-api), plus the **GnosisRequestV2** extension:

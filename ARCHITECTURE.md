@@ -75,3 +75,14 @@ SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 - Secrets are environment-injected; nothing secret is committed.
 - FFI `unsafe` blocks are confined to the Zig→C ABI boundary and individually
   classified in `audits/assail-classifications.a2ml`.
+
+## Forensic stack (untrusted search, trusted checking)
+
+See `docs/design/forensic-stack.adoc`. The Zig relational engine
+(`ffi/zig/src/kanren.zig`) emits candidate attack paths as raw step
+derivations; the Idris2 kernel (`src/abi/Forensics.idr`) checks each
+against the evidence — a solver bug can only lose answers, never forge
+one. Retention/echo, warrants, tropical budgets and the OND disclosure
+gate are port-and-reprove surfaces from `echo-types`, `epistemic-types`,
+`tropical-types` and `absolute-zero` (the Agda/Lean repos stay the
+source of truth).

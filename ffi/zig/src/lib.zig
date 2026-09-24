@@ -14,12 +14,14 @@ const core = @import("core.zig");
 const gnosis = @import("gnosis.zig");
 const connector = @import("connector.zig");
 const aerie = @import("aerie.zig");
+const kanren = @import("kanren.zig");
 
 // Force analysis of every exporting module so all C ABI symbols ship.
 comptime {
     _ = gnosis;
     _ = connector;
     _ = aerie;
+    _ = kanren;
 }
 
 /// Null-terminated library version.
