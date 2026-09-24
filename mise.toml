@@ -15,10 +15,6 @@
 # Gateway + FFI (build.zig requires 0.15.2+)
 zig = "0.15.2"
 
-# Tracked-drift crate only (src/api/rust) — do not extend; keep resolvable
-# so `just test` can still exercise the existing suite.
-rust = "stable"
-
 # Core experiment (src/core/Aerie.jl)
 julia = "stable"
 

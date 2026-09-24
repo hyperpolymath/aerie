@@ -122,11 +122,10 @@ M = half-day, L = day+), and dependencies. Full evidence in
 
 === Drift & architecture (owner decisions)
 
-* **D1 — `src/api/rust/` removal or re-home.** 🟠 CORRECTIVE · L ·
-  owner decision. Tracked drift per the architecture law; rust-ci.yml
-  keeps it testable meanwhile. Removal also drops the root Cargo
-  workspace, `.gitlab-ci.yml`'s cargo stages, and dependabot's cargo
-  group.
+* **D1 — `src/api/rust/` removal or re-home.** ✅ DONE 2026-09-24 —
+  twin removed with the root Cargo workspace, `rust-ci.yml`,
+  `.gitlab-ci.yml` cargo stages, and mise/.tool-versions rust pins
+  (owner decision; the aspect-weave branch).
 * **D2 — `src/stale/hyperglass` disposition.** 🟠 CORRECTIVE · S ·
   owner decision. Delete (upstream has its own repo) or re-home the
   `.samples/` deployment fixtures that the BGP lab references.

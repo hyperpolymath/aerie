@@ -4,7 +4,6 @@
 * text=auto eol=lf
 
 # Source
-*.rs    text eol=lf diff=rust
 *.ex    text eol=lf diff=elixir
 *.exs   text eol=lf diff=elixir
 *.res   text eol=lf
@@ -48,5 +47,4 @@ Containerfile  text eol=lf
 *.gz    binary
 
 # Lock files
-Cargo.lock  text eol=lf -diff
 flake.lock  text eol=lf -diff

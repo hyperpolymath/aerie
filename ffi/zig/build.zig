@@ -1,94 +1,67 @@
-// Aerie FFI Build Configuration
 // SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+//
+// build.zig — standalone FFI build (cd ffi/zig && zig build).
+//
+// Emits the same libzig_api the root build produces, plus the libaerie
+// alias (Idris2 consumers link -laerie per src/abi/Foreign.idr) and the
+// installed C header. The root build.zig is the canonical entry point;
+// this one exists for FFI-focused development and packaging.
 
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target   = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // Shared library (.so, .dylib, .dll)
-    const lib = b.addSharedLibrary(.{
-        .name = "aerie",
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
+    const mod = b.createModule(.{
+        .root_source_file = b.path("src/lib.zig"),
+        .target           = target,
+        .optimize         = optimize,
+        .link_libc        = true,
     });
+    mod.addIncludePath(b.path("include"));
 
-    // Set version
-    lib.version = .{ .major = 0, .minor = 1, .patch = 0 };
-
-    // Static library (.a)
-    const lib_static = b.addStaticLibrary(.{
-        .name = "aerie",
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
+    // Shared library: libzig_api.so
+    const shared = b.addLibrary(.{
+        .name        = "zig_api",
+        .root_module = mod,
+        .linkage     = .dynamic,
+        .version     = .{ .major = 0, .minor = 1, .patch = 0 },
     });
+    b.installArtifact(shared);
 
-    // Install artifacts
-    b.installArtifact(lib);
-    b.installArtifact(lib_static);
+    // Static library: libzig_api.a
+    const static = b.addLibrary(.{
+        .name        = "zig_api",
+        .root_module = mod,
+        .linkage     = .static,
+    });
+    b.installArtifact(static);
 
-    // Generate header file for C compatibility
-    const header = b.addInstallHeader(
-        b.path("include/aerie.h"),
-        "aerie.h",
-    );
+    // Alias for the Idris2 side (Foreign.idr declares `libaerie`).
+    const aerie_alias = b.addLibrary(.{
+        .name        = "aerie",
+        .root_module = mod,
+        .linkage     = .static,
+    });
+    b.installArtifact(aerie_alias);
+
+    // C header.
+    const header = b.addInstallHeaderFile(b.path("include/zig_api.h"), "zig_api.h");
     b.getInstallStep().dependOn(&header.step);
 
-    // Unit tests
-    const lib_tests = b.addTest(.{
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
+    // Tests (incl. ABI layout assertions against the header).
+    const test_mod = b.createModule(.{
+        .root_source_file = b.path("src/lib.zig"),
+        .target           = target,
+        .optimize         = optimize,
+        .link_libc        = true,
     });
+    test_mod.addIncludePath(b.path("include"));
+    const tests     = b.addTest(.{ .root_module = test_mod });
+    const run_tests = b.addRunArtifact(tests);
 
-    const run_lib_tests = b.addRunArtifact(lib_tests);
-
-    const test_step = b.step("test", "Run library tests");
-    test_step.dependOn(&run_lib_tests.step);
-
-    // Integration tests
-    const integration_tests = b.addTest(.{
-        .root_source_file = b.path("test/integration_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
-    integration_tests.linkLibrary(lib);
-
-    const run_integration_tests = b.addRunArtifact(integration_tests);
-
-    const integration_test_step = b.step("test-integration", "Run integration tests");
-    integration_test_step.dependOn(&run_integration_tests.step);
-
-    // Documentation
-    const docs = b.addTest(.{
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = .Debug,
-    });
-
-    const docs_step = b.step("docs", "Generate documentation");
-    docs_step.dependOn(&b.addInstallDirectory(.{
-        .source_dir = docs.getEmittedDocs(),
-        .install_dir = .prefix,
-        .install_subdir = "docs",
-    }).step);
-
-    // Benchmark (if needed)
-    const bench = b.addExecutable(.{
-        .name = "aerie-bench",
-        .root_source_file = b.path("bench/bench.zig"),
-        .target = target,
-        .optimize = .ReleaseFast,
-    });
-
-    bench.linkLibrary(lib);
-
-    const run_bench = b.addRunArtifact(bench);
-
-    const bench_step = b.step("bench", "Run benchmarks");
-    bench_step.dependOn(&run_bench.step);
+    const test_step = b.step("test", "Run FFI unit tests");
+    test_step.dependOn(&run_tests.step);
 }

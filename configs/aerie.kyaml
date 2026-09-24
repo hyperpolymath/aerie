@@ -1,0 +1,16 @@
+---
+# Aerie gateway configuration — KYAML (KEP-5295 strict subset; estate
+# rule Y-3, standards/3-practice/YAML-POLICY.adoc). Loader: config.zig.
+# Precedence: defaults < this file < environment. Unknown keys are
+# errors, so a typo can never quietly take the default.
+port: 4000
+rest: true
+graphql: true
+grpc: true
+redis_url: "redis://redis:6379"
+librespeed_url: "http://librespeed:80"
+hyperglass_url: "http://hyperglass:80"
+smokeping_url: "http://smokeping:80"
+verisim_url: "http://verisim:8084"
+# auth: "open" (Phase-1 default, permissive) | "deny" (Phase-2 keystore)
+auth: "open"

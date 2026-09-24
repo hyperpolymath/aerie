@@ -7,14 +7,6 @@ stages:
   - test
   - build
 
-variables:
-  CARGO_HOME: ${CI_PROJECT_DIR}/.cargo
-
-cache:
-  key: ${CI_COMMIT_REF_SLUG}
-  paths:
-    - .cargo/
-    - target/
 
 # ==================
 # Security Scanning
@@ -42,26 +34,7 @@ semgrep:
     - semgrep --config auto --error .
   allow_failure: true
 
-cargo-audit:
-  stage: security
-  image: rust:latest
-  script:
-    - cargo install cargo-audit
-    - cargo audit
-  rules:
-    - exists:
-        - Cargo.toml
 
-cargo-deny:
-  stage: security
-  image: rust:latest
-  script:
-    - cargo install cargo-deny
-    - cargo deny check
-  rules:
-    - exists:
-        - Cargo.toml
-  allow_failure: true
 
 mix-audit:
   stage: security
@@ -80,26 +53,7 @@ mix-audit:
 # Linting
 # ==================
 
-rustfmt:
-  stage: lint
-  image: rust:latest
-  script:
-    - rustup component add rustfmt
-    - cargo fmt -- --check
-  rules:
-    - exists:
-        - Cargo.toml
 
-clippy:
-  stage: lint
-  image: rust:latest
-  script:
-    - rustup component add clippy
-    - cargo clippy -- -D warnings
-  rules:
-    - exists:
-        - Cargo.toml
-  allow_failure: true
 
 mix-format:
   stage: lint
@@ -126,14 +80,6 @@ credo:
 # Testing
 # ==================
 
-cargo-test:
-  stage: test
-  image: rust:latest
-  script:
-    - cargo test --all-features
-  rules:
-    - exists:
-        - Cargo.toml
 
 mix-test:
   stage: test
@@ -150,18 +96,6 @@ mix-test:
 # Build
 # ==================
 
-cargo-build:
-  stage: build
-  image: rust:latest
-  script:
-    - cargo build --release
-  artifacts:
-    paths:
-      - target/release/
-    expire_in: 1 week
-  rules:
-    - exists:
-        - Cargo.toml
 
 mix-build:
   stage: build

@@ -58,8 +58,82 @@ https://github.com/hyperpolymath/aerie/pulls[hyperpolymath/aerie].
 * `.claude/CLAUDE.md` — "Never Zig, Rust, or C" self-contradiction (Zig IS the
   API language) and the "Zig (src/api/v/)" mislabel corrected.
 
+=== Added
+
+* Gateway skeleton, Phase 1 of the aspect weave —
+  `src/api/zig/{kyaml,config,ctx,errors,router,respond}.zig`:
+  the KYAML parser (strict KEP-5295 subset, estate rule Y-3); typed
+  config (defaults < KYAML file via AERIE_CONFIG < env; unknown keys
+  are errors; the only getenv reader in the gateway); the per-request
+  Ctx (replaces the module-level globals and the shared 128 KiB static
+  response buffer); the error taxonomy (one statusOf); the single
+  route table (paths, verbs, modules, resolvers — consumed by
+  dispatch, verb governance and the policy gate; boundary-guarded
+  longest-prefix); the single response write path. main.zig shrank
+  from 756 inline lines to lifecycle + the V2 edge handler.
+* `GnosisRequestV2.resp_scratch` — per-connection response storage
+  owned by the gnosis server. Fixes a genuine lifetime bug the weave
+  exposed: response bodies must outlive the handler call (the socket
+  write happens after return); the old code survived only via the
+  never-freed static buffer.
+* `configs/aerie.kyaml` — annotated example configuration.
+
+=== Changed
+
+* The gateway registers the V2 handler: query strings and request
+  headers are real at last, so `/api/v1/routes?target=…` works (dead
+  since the single-port architecture) and the policy gate finally
+  receives X-Api-Key.
+* REST errors return their true statuses (400 for missing parameters,
+  404 for unknown methods) instead of HTTP 200 with error bodies;
+  GraphQL keeps 200-with-errors per its conventions.
+* Verb governance is enforced (stealth 404 + timing jitter on denial);
+  route matching is boundary-guarded (`/api/v1/telemetryX` matches
+  nothing, previously matched `/api/v1/telemetry`).
+
+=== Added (forensics)
+
+* Forensic stack FS-0 (design: `docs/design/forensic-stack.adoc`) —
+  untrusted search, trusted checking (de Bruijn criterion):
+  `src/abi/Forensics.idr` (Idris2 kernel ABI: Retention restating
+  echo-types' thin poset keep <= residue <= forget, evidence-indexed
+  `Lateral`/`Reach`, `checkReach` signature, `CertificateCheck` +
+  non-factive `Warrant` restating epistemic-types' ProofTransport/Warrant
+  surfaces — port-and-reprove, Agda/Lean repos cited as authority) and
+  `ffi/zig/src/kanren.zig` (UNTRUSTED engine: evidence table,
+  depth-bounded search emitting `RawStep` derivations over the `kanren_*`
+  C ABI; budgeted "no answer within depth" is distinct from "no answer
+  exists" — the tropical budget seam). Not yet type-checked in Idris2
+  (no toolchain in sandbox; CI is the witness, per estate convention).
+* `src/abi/Gnosis.idr` — Idris2 ABI declarations for the gnosis server
+  pool and service connector pool (superset-compatible with
+  developer-ecosystem/zig-api), plus the **GnosisRequestV2** extension:
+  the raw query string and request headers, both stripped by the v1
+  surface (the deployed gateway could never see `X-Api-Key` or
+  `?target=`-style parameters — v2 fixes the starved policy gate and
+  resolvers at the ABI level).
+* `ffi/zig/` in-repo implementation of the uapi surface: threaded
+  HTTP/1.1 gnosis server (`gnosis.zig`), outbound connector pool
+  (`connector.zig`), C header `include/zig_api.h`. The build is
+  self-contained — no external clones, no private libproven_ffi, no
+  absolute paths — and asserts ABI layout against the header in tests.
+
+=== Changed
+
+* `build.zig` rewritten: one build graph (FFI library + gateway) from
+  repository sources; `zig build` and `zig build test` now succeed from
+  a fresh clone (first time in the repo's public history).
+* `Containerfile` builds self-contained (no developer-ecosystem clone).
+
 === Removed
 
+* `src/api/rust/` (the Rust twin crate) + root `Cargo.toml`/`Cargo.lock` —
+  owner decision 2026-09-24, roadmap D1 actioned. Aspects are implemented
+  once (Zig canonical); the twin could not compile (rand 0.10 API drift)
+  and kept CI red. Rust is not an API language here; any future Rust is
+  required to be Creusot-verified (owner instruction).
+* `.github/workflows/rust-ci.yml`, `.gitlab-ci.yml` cargo stages,
+  `MIGRATION.adoc`, mise/.tool-versions rust pins — twin follow-through.
 * `examples/web-project-deno.json` — Deno banned estate-wide 2026-09-22.
 * `MAINTAINERS` (extensionless scaffold duplicate; `MAINTAINERS.adoc` is
   canonical).

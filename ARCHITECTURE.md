@@ -23,9 +23,6 @@ SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 | Specs (K9/SVC, bottom-up) | Nickel + K9 | `specs/` |
 | Core experiment | Julia | `src/core/Aerie.jl` |
 
-`src/api/rust/` is **tracked drift**: a pre-law Rust rewrite of the gateway.
-It is not the API language here — do not build, extend, or migrate to it.
-Its removal is an owner decision (see `ROADMAP.adoc`, Phase 7).
 
 ## Directory structure (canonical)
 
@@ -52,7 +49,6 @@ Its removal is an owner decision (see `ROADMAP.adoc`, Phase 7).
 │   ├── api/zig/         # canonical gateway (main, resolvers, policy, proof, clients)
 │   ├── api/graphql/     # GraphQL wire contract
 │   ├── api/proto/       # gRPC wire contract
-│   ├── api/rust/        # TRACKED DRIFT — not the API language (see above)
 │   ├── core/            # Julia core experiment
 │   └── ui/              # AffineScript HUD + wasm + css
 ├── tests/               # test suites (fuzz, idris2 proven-tests format)
@@ -79,3 +75,14 @@ Its removal is an owner decision (see `ROADMAP.adoc`, Phase 7).
 - Secrets are environment-injected; nothing secret is committed.
 - FFI `unsafe` blocks are confined to the Zig→C ABI boundary and individually
   classified in `audits/assail-classifications.a2ml`.
+
+## Forensic stack (untrusted search, trusted checking)
+
+See `docs/design/forensic-stack.adoc`. The Zig relational engine
+(`ffi/zig/src/kanren.zig`) emits candidate attack paths as raw step
+derivations; the Idris2 kernel (`src/abi/Forensics.idr`) checks each
+against the evidence — a solver bug can only lose answers, never forge
+one. Retention/echo, warrants, tropical budgets and the OND disclosure
+gate are port-and-reprove surfaces from `echo-types`, `epistemic-types`,
+`tropical-types` and `absolute-zero` (the Agda/Lean repos stay the
+source of truth).

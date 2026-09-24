@@ -1,0 +1,155 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Aerie Forensic Stack — Untrusted Search, Trusted Checking
+:status: Active (design accepted 2026-09-24; implementation phased)
+:revdate: 2026-09-24
+
+== Principle
+
+miniKanren-style search over network evidence is complex, heuristic and
+depth-bounded. We do not prove it correct. Following the *de Bruijn
+criterion*, the search engine produces **candidate answers with
+derivations**, and a small checker whose types encode the forensic rules
+accepts or rejects each one. The worst outcome of a buggy solver is a
+missing answer, never a false one.
+
+[cols="1,4", options="header"]
+|===
+|Layer |Role
+
+|Untrusted (Zig)
+|Parsers → fact store → relational search (`ffi/zig/src/kanren.zig`).
+Fast, arena memory, C ABI. Any bug here can only lose answers.
+
+|Trusted (Idris2)
+|`src/abi/Forensics.idr`: fact schema + warrants (ingest boundary ①),
+query signatures (②), derivation checker kernel (③), custody receipts
+(④), disclosure gate (⑤).
+
+|Source of truth (Agda / Lean)
+|`hyperpolymath/echo-types`, `epistemic-types`, `choreographic-types`,
+`tropical-types`, `absolute-zero`. Idris2 **ports and reproves** the
+needed computational surfaces and cites the upstream module as the
+authority — Idris2 cannot import Agda/Lean proofs.
+|===
+
+== The five interface points (priority order)
+
+[cols="1,3,3", options="header"]
+|===
+|# |Boundary |Why Idris2
+
+|③ |Derivation checker |Makes the solver untrusted. Every reported attack path is a typed proof over evidence.
+|① |Fact ingestion |Parsers are where real bugs live (NAT, sampling, rotation). Types record *what kind of loss* produced each fact.
+|④ |Custody / transport |SOC → IR → legal handoffs. Receipts must not silently become "truth" at the receiver.
+|⑤ |Disclosure gate |Reports leak PII and internal topology. OND-style non-disclosure relative to a declared observer, with honest residue lists.
+|② |Query signatures |Stops ill-moded queries (numeric predicate on an unbound variable; binding an origin under `Residue` retention).
+|===
+
+Idris2 never sits inside the solver loop — per-goal FFI crossings would
+destroy performance and buy nothing: the checker already catches wrong
+answers.
+
+== Type-theory mapping (port-and-reprove sources)
+
+[cols="1,3,3", options="header"]
+|===
+|Theory |Authority (upstream) |Aerie use
+
+|Echo types
+|`echo-types` — `Echo.Index.ThinPoset`, `Echo.Modality.Core`,
+`Echo.Separation.NotResourceInstance` (FOUNDATION_CONTRACT.adoc)
+|Per-field `Retention` (`Keep ≤ Residue ≤ Forget`) on ingested facts.
+A query may bind a variable to a single origin only under `Keep`; under
+`Residue` it must return the *fibre* (all consistent origins); under
+`Forget` the query is ill-typed. Backward relational queries are fibre
+enumerators; the checker certifies each answer as `(origin, f origin = y)`.
+
+|Epistemic types
+|`epistemic-types` — `Warrant.agda`, `ProofTransport.agda`
+(`CertificateCheck`, `proofSound`), `ReadConsistency.agda`
+|Sensors/analysts as standpoints `κ`. `Warrant` records that a source
+*said* X (non-factive by construction); `SoundWarrant` is the explicit
+assumption needed to treat it as *X happened* — and it shows in the
+report instead of hiding in the rules. Derivations tie to evidence-store
+snapshots; re-ingestion stales them (ReadConsistency).
+
+|Tropical resource typing
+|`tropical-types` (Lean 4)
+|Max-plus path-duration grades reject temporally impossible chains;
+min-max bottleneck grades reject throughput-impossible exfil paths.
+Solver depth bounds become declared resource grades on queries (②), so
+"no answer within budget" is typed as distinct from "no answer exists".
+Grades *measure*; they are never Echo and never called echo-grades.
+
+|Choreographic types
+|`choreographic-types` (Agda, graded MPST)
+|Protocols (Kerberos, SMB, TLS) as global types; a sensor placement is
+a cut across the causal order. K-CUT is open — treated as a *design
+contract*, not a runtime guarantee; projection mismatches are logged as
+forensic anomalies.
+
+|Absolute zero (OND/CNO)
+|`absolute-zero` (multi-prover)
+|The disclosure gate (⑤): sanitized exports prove observational null
+disclosure relative to a declared observation model, and always ship an
+explicit residue list of uncovered side channels. Never claim
+side-channel freedom.
+|===
+
+== C ABI (interface ③)
+
+`ffi/zig/include/zig_api.h` (kanren section), declared in
+`src/abi/Forensics.idr`:
+
+```c
+typedef struct { uint32_t fact_id; uint8_t rule; } RawStep;   /* 0=lateral 1=exfil 2=entry */
+typedef struct { const RawStep *steps; uint32_t len; } RawDeriv;
+
+uint32_t kanren_attack_paths(const char *src, const RawDeriv **out); /* count; arena lives until kanren_free */
+void      kanren_free(void);
+```
+
+The Idris2 kernel is evidence-indexed: `Lateral ev a b` and
+`Reach ev a b` are indexed by the evidence list, so a derivation cannot
+cite a flow that was never observed. `checkReach` converts raw steps
+into `Either CheckError (Reach ev a b)`; acceptance is a theorem about
+*this* evidence. The `CertificateCheck` shape (executable check +
+soundness: acceptance entails meaning) restates
+`epistemic-types/src/EpistemicTypes/ProofTransport.agda`.
+
+== Phasing (evolutionary; every phase leaves `zig build test` green)
+
+[cols="1,4", options="header"]
+|===
+|Phase |Deliverable
+
+|FS-0 *(this change)*
+|Design accepted; ABI declared (`Forensics.idr`); Zig engine scaffold:
+evidence table, depth-bounded search emitting `RawStep` derivations,
+C ABI, fixture tests. Not yet type-checked in Idris2 (no toolchain in
+sandbox — same honest status as `tests/idris2/`; CI is the witness).
+
+|FS-1
+|Kernel implemented and type-checked: `checkReach` + side conditions
+(`Internal`, `LateralPort`) decided; `Either` + `CertificateCheck`
+views; negative tests (fact-id not in evidence → reject).
+
+|FS-2
+|Ingestion (①): Retention-tagged facts from Zeek/NetFlow-shaped
+parsers; NAT/sampling produce `Residue` fibres, never silent origins.
+
+|FS-3
+|Query signatures (②) + tropical budget grades; disclosure gate (⑤)
+via absolute-zero port; custody receipts (④).
+|===
+
+== Honest bounds
+
+* Tier-1/Tier-2 content from the upstream contracts only; no
+  funext-qualified results, no WFS/OFS distinction.
+* Fibres are never collapsed to a cardinality or entropy score; fibre
+  size may be a *reported measure* (resource algebra), but the fibre is
+  the artefact.
+* The solver is and remains untrusted; no claim in this document depends
+  on its correctness.
