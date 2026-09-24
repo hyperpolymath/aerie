@@ -8,7 +8,7 @@
 #   workflow-linter.yml
 #
 # Load-bearing build/security workflows stay standalone in the repo
-# (rust-ci, codeql, dependabot, release, scan/mirror/pages plumbing).
+# (codeql, dependabot, release, scan/mirror/pages plumbing).
 
 name: Governance
 

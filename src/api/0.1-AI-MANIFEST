@@ -9,12 +9,11 @@ context:
 ---
 ### [AI_MANIFEST]
 description: |
-  The canonical implementation is the Zig gateway (zig/), built by the root build.zig. The Rust crate (rust/) is tracked drift: do not build, extend, or migrate to it.
+  The canonical implementation is the Zig gateway (zig/), built by the root build.zig. The Rust twin (rust/) was removed 2026-09-24 (owner decision, roadmap D1 actioned): Rust is not an API language in this estate.
 canonical_locations:
   zig: "zig/"
   graphql: "graphql/"
   proto: "proto/"
-  rust: "rust/"
 
 ---
 ### [FILE_RELATIONSHIPS]
@@ -25,6 +24,4 @@ files:
     description: "GraphQL wire contract"
   - name: "proto/aerie.proto"
     description: "gRPC wire contract"
-  - name: "rust"
-    description: "tracked drift; removal is an owner decision"
 

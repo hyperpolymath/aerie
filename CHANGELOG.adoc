@@ -60,6 +60,13 @@ https://github.com/hyperpolymath/aerie/pulls[hyperpolymath/aerie].
 
 === Removed
 
+* `src/api/rust/` (the Rust twin crate) + root `Cargo.toml`/`Cargo.lock` —
+  owner decision 2026-09-24, roadmap D1 actioned. Aspects are implemented
+  once (Zig canonical); the twin could not compile (rand 0.10 API drift)
+  and kept CI red. Rust is not an API language here; any future Rust is
+  required to be Creusot-verified (owner instruction).
+* `.github/workflows/rust-ci.yml`, `.gitlab-ci.yml` cargo stages,
+  `MIGRATION.adoc`, mise/.tool-versions rust pins — twin follow-through.
 * `examples/web-project-deno.json` — Deno banned estate-wide 2026-09-22.
 * `MAINTAINERS` (extensionless scaffold duplicate; `MAINTAINERS.adoc` is
   canonical).

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 # Aerie .gitignore — scoped to the languages actually in this repository
-# (Zig, Rust, Idris2, Julia, AffineScript/JS-glue, Guix) plus general
+# (Zig, Idris2, Julia, AffineScript/JS-glue, Guix) plus general
 # secrets/logs rules. The previous version was a multi-language
 # kitchen-sink (Elixir/ReScript/Deno/V/Ada/Haskell — none present) and
 # wrongly ignored .tool-versions, which estate REQUIRED-FILES mandates.
@@ -18,8 +18,9 @@ Thumbs.db
 .zig-cache/
 zig-out/
 
-# Rust
+# Stray build dirs (e.g. a removed toolchain's target/)
 /target/
+
 
 # Idris2
 /_build/

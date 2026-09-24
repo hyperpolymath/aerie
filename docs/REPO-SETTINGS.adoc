@@ -127,7 +127,7 @@ gh api -X POST repos/hyperpolymath/aerie/rulesets/$RID -f active=true
 NOTE: enabling `required_status_checks` requires naming the check contexts
 (currently the rule exists but has an empty context list). Populate it with
 the GATE-category workflows from `CICD-WORKFLOW-CATALOG.md`: governance,
-codeql, scorecard, hypatia-scan, dogfood-gate, rust-ci, guix-policy. Until
+codeql, scorecard, hypatia-scan, dogfood-gate, guix-policy. Until
 then the rule is a no-op and the merge gate rests on PR review + signature
 only.
 

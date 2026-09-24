@@ -23,9 +23,6 @@ SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 | Specs (K9/SVC, bottom-up) | Nickel + K9 | `specs/` |
 | Core experiment | Julia | `src/core/Aerie.jl` |
 
-`src/api/rust/` is **tracked drift**: a pre-law Rust rewrite of the gateway.
-It is not the API language here — do not build, extend, or migrate to it.
-Its removal is an owner decision (see `ROADMAP.adoc`, Phase 7).
 
 ## Directory structure (canonical)
 
@@ -52,7 +49,6 @@ Its removal is an owner decision (see `ROADMAP.adoc`, Phase 7).
 │   ├── api/zig/         # canonical gateway (main, resolvers, policy, proof, clients)
 │   ├── api/graphql/     # GraphQL wire contract
 │   ├── api/proto/       # gRPC wire contract
-│   ├── api/rust/        # TRACKED DRIFT — not the API language (see above)
 │   ├── core/            # Julia core experiment
 │   └── ui/              # AffineScript HUD + wasm + css
 ├── tests/               # test suites (fuzz, idris2 proven-tests format)

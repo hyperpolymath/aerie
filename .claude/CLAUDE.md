@@ -18,10 +18,11 @@ API = Zig**. No other language (Rust, C, V, …) may be used for these layers.
 - **Data**: Redis (cache/audit), VerisimDB (bitemporal, future)
 - **Container**: Podman Compose with Chainguard base images
 
-The V implementation (`src/api/v/`) was removed 2026-05-16 (estate-wide V ban). The
-`src/api/rust/` crate and the old `MIGRATION.adoc` "→ Rust" text are
-off-policy drift — Rust is **not** an API language here; do not build,
-extend, or migrate to it. Canonical = the Zig gateway.
+The V implementation (`src/api/v/`) was removed 2026-05-16 (estate-wide V
+ban). The Rust twin (`src/api/rust/`) was removed 2026-09-24 (owner
+decision; roadmap D1 actioned) — Rust is **not** an API language here.
+Canonical = the Zig gateway. (If Rust is ever reintroduced estate-side, it
+must be Creusot-verified per owner instruction 2026-09-24.)
 
 ## Allowed Languages
 

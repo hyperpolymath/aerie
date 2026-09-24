@@ -20,13 +20,12 @@ build-release:
     @echo "=== Build (ReleaseSafe) ==="
     zig build -Doptimize=ReleaseSafe
 
-# Run the in-tree test suites (zig units, idris2 proven-tests, rust api)
+# Run the in-tree test suites (zig units, idris2 proven-tests)
 # plus the submodule suites (kept from the original tests recipe).
 test:
     @echo "=== In-tree suites ==="
     @if command -v zig >/dev/null 2>&1; then zig build test; else echo "zig not found — skipping zig unit tests"; fi
     @if command -v idris2 >/dev/null 2>&1 && [ -f tests/idris2/Test.idr ]; then bash tests/idris2/run_tests.sh || echo "idris2 suite failed or incomplete — see its output"; else echo "idris2 not found — skipping idris2 suite"; fi
-    @if command -v cargo >/dev/null 2>&1; then (cd src/api/rust && cargo test --quiet); else echo "cargo not found — skipping rust api tests (tracked drift)"; fi
     @echo "=== Submodule suites ==="
     @if [ -d qubes-sdp ] && [ -f qubes-sdp/justfile ]; then (cd qubes-sdp && just test); fi
     @if [ -d bgp-backbone-lab ] && [ -f bgp-backbone-lab/justfile ]; then (cd bgp-backbone-lab && just test); fi

@@ -41,7 +41,7 @@ This library follows the **Hyperpolymath RSR Standard** for ABI and FFI design:
                   ▼
 ┌─────────────────────────────────────────────┐
 │  Any Language via C ABI                     │
-│  - Rust, AffineScript, Julia, Python, etc.     │
+│  - AffineScript, Julia, Python, etc.          │
 └─────────────────────────────────────────────┘
 ```
 
@@ -259,28 +259,6 @@ main = do
   putStrLn "Success"
 ```
 
-### From Rust
-
-```rust
-#[link(name = "aerie")]
-extern "C" {
-    fn aerie_init() -> *mut std::ffi::c_void;
-    fn aerie_free(handle: *mut std::ffi::c_void);
-    fn aerie_process(handle: *mut std::ffi::c_void, input: u32) -> i32;
-}
-
-fn main() {
-    unsafe {
-        let handle = aerie_init();
-        assert!(!handle.is_null());
-
-        let result = aerie_process(handle, 42);
-        assert_eq!(result, 0);
-
-        aerie_free(handle);
-    }
-}
-```
 
 ### From Julia
 
