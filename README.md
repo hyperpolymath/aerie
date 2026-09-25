@@ -26,8 +26,10 @@ Four ways in — full detail in [`docs/SETUP.adoc`](docs/SETUP.adoc):
    repository. Use the Justfile as the single entry point.`
 2. **Raw** — `git clone` → install Zig 0.15.2+, just, and Podman →
    `zig build -Doptimize=ReleaseSafe` → `podman compose -f compose.yml up`.
-3. **Just** — `./setup.sh` (installs just if missing), then
-   `just doctor && just build && just test`.
+3. **Just** (zero-prerequisite — start here) — `./setup.sh` needs only
+   git + curl: it installs `just` and the pinned Zig toolchain itself if
+   missing, then verifies with `just doctor`. Continue with
+   `just build && just test`.
 4. **Launcher** — `./aerie-launcher.sh` (standards-compliant,
    cross-platform, launch-scaffolder generated).
 

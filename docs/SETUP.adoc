@@ -7,12 +7,28 @@ Everything you need to build, test, and run Aerie, four ways. The
 Justfile is the single source of truth for commands; the other three
 approaches are routes into it.
 
-== Prerequisites (all approaches)
+[IMPORTANT]
+====
+**Approach 3 (`./setup.sh`) is the zero-prerequisite path.** It works
+immediately after `git clone` on a machine with only core OS tools
+(bash, curl, git): it installs `just` and the pinned Zig toolchain
+itself, into a user-local directory, then runs `just doctor`. The other
+approaches list their prerequisites below — if you are not sure which to
+take, take Approach 3.
+====
+
+== Prerequisites (per approach)
+
+These are installed for you by `./setup.sh` / `just heal` when missing;
+list them here only matters if you take the raw manual route:
 
 * **Zig 0.15.2+** — the gateway and FFI are Zig (estate law: API = Zig,
-  FFI = Zig, ABI = Idris2).
-* **just** — the estate task runner (no Makefiles).
-* **Podman** (or any OCI runtime) — for the containerised stack.
+  FFI = Zig, ABI = Idris2). Pinned in `.tool-versions`; `./setup.sh`
+  installs that exact version.
+* **just** — the estate task runner (no Makefiles). Installed by
+  `./setup.sh` when missing.
+* **Podman** (or any OCI runtime) — for the containerised stack only
+  (not needed for build/test).
 * Optional: Rust (tracked-drift crate only — do not extend), Idris2
   (ABI + proven-tests suite), Guix (reproducible environment).
 
@@ -25,10 +41,12 @@ Give your agent exactly this prompt:
 
 ----
 Read aerie_chora.deed, .claude/CLAUDE.md, and docs/SETUP.adoc in this
-repository, then set it up: install missing tools with 'just heal',
-verify the toolchain with 'just doctor', build with 'just build', and
-run the test suite with 'just test'. Do not build, extend, or migrate
-to src/api/rust (tracked drift). Report any gate that fails.
+repository, then set it up: run ./setup.sh first (it installs just and
+the pinned Zig toolchain using only curl), verify the toolchain with
+'just doctor', heal whatever it reports with 'just heal', build with
+'just build', and run the test suite with 'just test'. Do not build,
+extend, or migrate to src/api/rust (tracked drift). Report any gate
+that fails.
 ----
 
 The deed (`aerie_chora.deed`) is the universal AI entry point: it names
@@ -55,12 +73,16 @@ podman compose -f compose.yml up
 # 5. Verify: gateway answers on :4000 (REST+GraphQL) and :4001 (gRPC)
 ----
 
-== Approach 3 — Just
+== Approach 3 — Just (zero-prerequisite: only bash, curl, git needed)
 
 ----
-./setup.sh          # platform detection + installs just if missing
+./setup.sh          # platform detection; installs just + pinned Zig if
+                    # missing (curl-only download, no sudo), then runs
+                    # just doctor. Safe to re-run: present tools are
+                    # left untouched.
 just doctor         # toolchain health check (fails with a repair hint)
 just heal           # attempts automatic repair of missing tools
+                    # (same bootstrap as ./setup.sh, then re-verifies)
 just build          # zig build (debug)
 just build-release  # zig build -Doptimize=ReleaseSafe
 just test           # in-tree suites (zig, idris2, rust) + submodule suites
