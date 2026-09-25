@@ -9,6 +9,10 @@ body:
       value: |
         Please report what you **observed**, not what you inferred. A command and
         its actual output is worth more than a description of the problem.
+
+        All fields below use the same plain text area and are **optional**:
+        answer what is relevant, skip what is not. The only hard gate is the
+        attestation pair at the end.
   - type: textarea
     id: what-happened
     attributes:
@@ -17,29 +21,28 @@ body:
       placeholder: |
         $ just verify
         error: ...
-      render: shell
     validations:
-      required: true
+      required: false
   - type: textarea
     id: expected
     attributes:
       label: What you expected instead
     validations:
-      required: true
+      required: false
   - type: textarea
     id: repro
     attributes:
       label: Minimal reproduction
       description: The shortest sequence that reproduces it from a clean checkout.
     validations:
-      required: true
+      required: false
   - type: input
     id: version
     attributes:
       label: Version / commit
       description: Output of `git rev-parse --short HEAD`.
     validations:
-      required: true
+      required: false
   - type: textarea
     id: environment
     attributes:
