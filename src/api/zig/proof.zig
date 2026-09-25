@@ -129,7 +129,7 @@ pub fn wrapBodyWithProof(
 pub fn policyContextString(module_name: []const u8, out: []u8) ![]const u8 {
     return try std.fmt.bufPrint(
         out,
-        "aerie-policy-v1:phase1-permissive:module={s}:entitlements=all",
+        "aerie-policy-v1:phase2-weave:module={s}",
         .{module_name},
     );
 }

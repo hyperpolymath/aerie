@@ -12,5 +12,13 @@ librespeed_url: "http://librespeed:80"
 hyperglass_url: "http://hyperglass:80"
 smokeping_url: "http://smokeping:80"
 verisim_url: "http://verisim:8084"
-# auth: "open" (Phase-1 default, permissive) | "deny" (Phase-2 keystore)
-auth: "open"
+# Deny-by-default (Phase 2): only public routes (health, meta) answer
+# without a key. "open" restores the permissive dev posture.
+auth: "deny"
+# API keys: "key" (all modules) | "key:name" | "key:name:mod1,mod2".
+# Env alternative: AERIE_API_KEYS="spec;spec". Keys never appear in
+# logs or /api/v1/meta except redacted.
+api_keys: [
+  "change-me-0000000000001:ops:*",
+  "change-me-0000000000002:soc:telemetry,routes,smokeping",
+]

@@ -29,6 +29,7 @@ const config = @import("config.zig");
 const ctx = @import("ctx.zig");
 const router = @import("router.zig");
 const respond = @import("respond.zig");
+const ks = @import("keystore.zig");
 
 /// C ABI from the in-repo FFI (declared in src/abi/Gnosis.idr).
 const c = @cImport({
@@ -42,6 +43,7 @@ const c = @cImport({
 var g_cfg: config.Config = undefined;
 var g_redis: ?*rc.RedisClient = null;
 var g_verisim: vc.VerisimDBClient = undefined;
+var g_keystore: ks.KeyStore = undefined;
 var g_alloc: std.mem.Allocator = undefined;
 var g_ready: bool = false;
 
@@ -107,6 +109,7 @@ export fn aerieHandlerV2(
         .cfg = &g_cfg,
         .redis = redis,
         .verisim = &g_verisim,
+        .keystore = &g_keystore,
         .pool_state = if (gnosis_http_handle != 0)
             c.uapi_gnosis_state(gnosis_http_handle)
         else
@@ -170,6 +173,24 @@ pub fn main() !void {
     g_verisim = vc.VerisimDBClient.init();
     g_alloc = gpa;
     g_redis = redis_ptr;
+
+    // Keystore: env specs first, then the KYAML api_keys list.
+    g_keystore = ks.KeyStore.init();
+    const env_keys = g_keystore.loadFromEnvValue(g_cfg.api_keys_env);
+    var yaml_keys: usize = 0;
+    if (g_cfg.config_path) |path| {
+        if (std.fs.cwd().readFileAlloc(cfg_arena.allocator(), path, 1 << 20)) |src| {
+            yaml_keys = g_keystore.loadFromKyamlSrc(cfg_arena.allocator(), src) catch |e| blk: {
+                std.debug.print("[aerie] keystore: KYAML parse error in {s} ({}) — env keys only\n", .{ path, e });
+                break :blk 0;
+            };
+        } else |e| {
+            std.debug.print("[aerie] keystore: cannot read {s} ({}) — env keys only\n", .{ path, e });
+        }
+    }
+    if (g_cfg.auth_mode == .deny) {
+        std.debug.print("[aerie] keystore: {d} key(s) loaded (env: {d}, kyaml: {d}) — deny-by-default\n", .{ g_keystore.count, env_keys, yaml_keys });
+    }
     g_ready = true;
 
     // Single-port setup: create → register V2 handler → start.
@@ -210,12 +231,12 @@ fn printBanner(cfg: *const config.Config) void {
         \\|  REST            : /api/v1/*   {s}                       |
         \\|  GraphQL         : /graphql    {s}                       |
         \\|  gRPC-JSON       : /grpc/*     {s}                       |
-        \\|  Auth mode       : {s}                                     |
+        \\|  Auth mode       : {s}   ({d} keys loaded)          |
         \\+----------------------------------------------------------+
         \\|  Server pool     : uapi_gnosis_*   (in-repo zig_api)     |
         \\|  Connector pool  : uapi_connector_* (in-repo zig_api)    |
         \\|  Proof mode      : light (SHA-256)                       |
-        \\|  Policy gate     : Phase 1 (permissive; deny lands P2)    |
+        \\|  Policy gate     : Phase 2 (keystore, deny-by-default)    |
         \\+----------------------------------------------------------+
         \\
     , .{
@@ -224,5 +245,6 @@ fn printBanner(cfg: *const config.Config) void {
         if (cfg.graphql_enabled) "ENABLED " else "disabled",
         if (cfg.grpc_enabled) "ENABLED " else "disabled",
         @tagName(cfg.auth_mode),
+        g_keystore.count,
     });
 }

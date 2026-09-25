@@ -20,6 +20,11 @@ services:
     environment:
       - PORT=4000
       - GRPC_PORT=4001
+      # Phase 2 policy gate: the binary default is deny-by-default;
+      # the dev compose stays permissive. For a key-checked gateway:
+      #   AERIE_AUTH_MODE=deny
+      #   AERIE_API_KEYS=<key>:<name>:telemetry,routes[;<key>:<name>:…]
+      - AERIE_AUTH_MODE=open
       - REDIS_URL=redis://redis:6379
       - LIBRESPEED_URL=http://librespeed:80
       - HYPERGLASS_URL=http://hyperglass:80
