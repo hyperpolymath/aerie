@@ -5,8 +5,8 @@ Get up and running in 60 seconds.
 
 == Prerequisites
 
-* Git 2.40+
-* just (command runner) — https://just.systems
+* Git 2.40+ and curl — nothing else; `./setup.sh` installs `just` and
+  the rest of the toolchain for you (no sudo).
 
 == Install
 
@@ -14,8 +14,9 @@ Get up and running in 60 seconds.
 ----
 git clone https://github.com/hyperpolymath/aerie
 cd aerie
-just doctor    # check toolchain
-just heal      # auto-install missing tools
+./setup.sh     # installs just + pinned Zig if missing, then checks the
+               # toolchain with just doctor
+just heal      # re-attempt automatic repair of anything doctor flagged
 ----
 
 == First Run

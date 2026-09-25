@@ -6,9 +6,12 @@ import? "contractile.just"
 # CANONICAL VERBS (estate Justfile specification)
 # ═══════════════════════════════════════════════════════════════════
 
-# First-time setup: toolchain check + repair
-setup: doctor
-    just heal
+# First-time setup: install anything missing, then verify the toolchain.
+# Delegates to the zero-prerequisite bootstrap (needs only bash + curl);
+# deliberately NOT 'doctor then heal' — a failing doctor would abort the
+# recipe before heal ever ran.
+setup:
+    @./setup.sh
 
 # Build the gateway (debug)
 build:
@@ -170,15 +173,22 @@ doctor:
             FAIL=$((FAIL + 1))
         fi
     }
-    check "just"              just      "1.25" 
-    check "git"               git       "2.40" 
-    check "Zig"               zig       "0.13" 
+    check "just"              just      "1.25"
+    check "git"               git       "2.40"
+    check "Zig"               zig       "0.15.2"
     # Optional tools
     if command -v panic-attack >/dev/null 2>&1; then
         echo "  [OK]   panic-attack — available"
         PASS=$((PASS + 1))
     else
         echo "  [WARN] panic-attack — not found (pre-commit scanner)"
+        WARN=$((WARN + 1))
+    fi
+    if command -v podman >/dev/null 2>&1; then
+        echo "  [OK]   podman — available (containerised stack)"
+        PASS=$((PASS + 1))
+    else
+        echo "  [WARN] podman — not found (only needed for 'podman compose up')"
         WARN=$((WARN + 1))
     fi
     echo ""
@@ -190,18 +200,13 @@ doctor:
     echo "  All required tools present."
 
 # Attempt to automatically install missing tools
+# Delegates to the same zero-prerequisite bootstrap as first-time setup:
+# curl-only downloads of `just` (via setup.sh) and the pinned Zig toolchain,
+# followed by `just doctor` to verify. (Note: heal can only run when just
+# is already present — fresh clones should run ./setup.sh directly.)
 heal:
-    #!/usr/bin/env bash
-    echo "═══════════════════════════════════════════════════"
-    echo "  Aerie Heal — Automatic Tool Installation"
-    echo "═══════════════════════════════════════════════════"
-    echo ""
-    if ! command -v just >/dev/null 2>&1; then
-        echo "Installing just..."
-        cargo install just 2>/dev/null || echo "Install just from https://just.systems"
-    fi
-    echo ""
-    echo "Heal complete. Run 'just doctor' to verify."
+    @echo "=== Heal === (delegating to ./setup.sh — the zero-prerequisite bootstrap)"
+    @./setup.sh
 
 # Guided tour of the project structure and key concepts
 tour:

@@ -4,19 +4,24 @@ name: Feature request
 description: Propose a capability this project does not yet have.
 labels: ["enhancement", "needs-triage"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        All fields below are **optional** — answer what is relevant, skip the
+        rest. A short, concrete problem statement beats a long speculative one.
   - type: textarea
     id: problem
     attributes:
       label: The problem
       description: What are you unable to do today? Describe the situation, not the solution.
     validations:
-      required: true
+      required: false
   - type: textarea
     id: proposal
     attributes:
       label: Proposed change
     validations:
-      required: true
+      required: false
   - type: textarea
     id: alternatives
     attributes:
@@ -34,4 +39,4 @@ body:
         - Template-wide — would propagate to minted repos
         - Not sure
     validations:
-      required: true
+      required: false

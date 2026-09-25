@@ -5,9 +5,8 @@ Clone, build, test, contribute.
 
 == Prerequisites
 
-* Git 2.40+
-* just (command runner)
-* See `just doctor` output for language-specific requirements
+* Git 2.40+ and curl — nothing else; `./setup.sh` installs the rest
+* `just doctor` output tells you the language-specific state afterwards
 
 == Setup
 
@@ -15,8 +14,10 @@ Clone, build, test, contribute.
 ----
 git clone https://github.com/hyperpolymath/aerie
 cd aerie
-just doctor    # verify toolchain
-just heal      # auto-install missing tools
+./setup.sh     # zero-prerequisite: installs just + pinned Zig (curl only),
+               # then runs just doctor. Safe to re-run.
+just doctor    # re-verify the toolchain any time
+just heal      # re-attempt automatic repair of anything doctor flags
 ----
 
 == Development Workflow
