@@ -17,6 +17,7 @@ const config = @import("config.zig");
 const router = @import("router.zig");
 const rc = @import("redis_client.zig");
 const vc = @import("verisim_client.zig");
+const ks = @import("keystore.zig");
 
 pub const Ctx = struct {
     // --- request (slices alias gnosis-owned storage; valid for the call)
@@ -39,6 +40,11 @@ pub const Ctx = struct {
     // --- aspects (filled during dispatch)
     policy: t.PolicyDecision = std.mem.zeroes(t.PolicyDecision),
     route: ?*const router.Route = null,
+    keystore: ?*const ks.KeyStore = null,
+    /// Temporal-audit parameters extracted by the protocol adapter
+    /// (REST query / gRPC body / GraphQL args) and consumed by the
+    /// temporal producer.
+    temporal: ?t.TemporalParams = null,
 
     // --- response slot (the ONLY place a response is assembled).
     // out_buf is the gnosis-owned per-connection scratch: it outlives the
@@ -95,6 +101,34 @@ pub const Ctx = struct {
         const dst = self.takeBodySpace(bytes.len) orelse return fallback;
         @memcpy(dst, bytes);
         return dst;
+    }
+
+    /// Protocol-neutral parameter: REST query string, then JSON body
+    /// field, then camelCase JSON field (event_id -> eventId). Returns
+    /// "" when absent. This is what lets REST, gRPC-JSON and GraphQL
+    /// adapters share one resolver signature.
+    pub fn param(self: *const Ctx, name: []const u8) []const u8 {
+        const q = self.queryParam(name);
+        if (q.len > 0) return q;
+        const j = self.jsonStrField(name);
+        if (j.len > 0) return j;
+        if (std.mem.indexOfScalar(u8, name, '_')) |_| {
+            var cb: [32]u8 = undefined;
+            var n: usize = 0;
+            var upper = false;
+            for (name) |ch| {
+                if (ch == '_') {
+                    upper = true;
+                    continue;
+                }
+                if (n >= cb.len) break;
+                cb[n] = if (upper) std.ascii.toUpper(ch) else ch;
+                upper = false;
+                n += 1;
+            }
+            return self.jsonStrField(cb[0..n]);
+        }
+        return "";
     }
 
     /// Extract a JSON string field from the request body without
@@ -174,6 +208,40 @@ test "ctx: query params parse from the raw query" {
     try std.testing.expectEqualStrings("198.51.100.9", c.queryParam("target"));
     try std.testing.expectEqualStrings("10", c.queryParam("limit"));
     try std.testing.expectEqualStrings("", c.queryParam("mode"));
+}
+
+test "ctx: param() falls back across protocols" {
+    const c = Ctx{
+        .arena = undefined,
+        .method = "POST",
+        .path = "/grpc/GetTemporalAuditSnapshot",
+        .query = "",
+        .body = "{\"mode\": \"as_of\", \"eventId\": \"abc-123\"}",
+        .header_names = null,
+        .header_values = null,
+        .header_count = 0,
+        .cfg = undefined,
+        .redis = undefined,
+        .verisim = undefined,
+    };
+    try std.testing.expectEqualStrings("as_of", c.param("mode"));
+    try std.testing.expectEqualStrings("abc-123", c.param("event_id")); // camelCase fallback
+    try std.testing.expectEqualStrings("", c.param("start"));
+
+    const r = Ctx{
+        .arena = undefined,
+        .method = "GET",
+        .path = "/api/v1/routes",
+        .query = "target=198.51.100.9",
+        .body = "",
+        .header_names = null,
+        .header_values = null,
+        .header_count = 0,
+        .cfg = undefined,
+        .redis = undefined,
+        .verisim = undefined,
+    };
+    try std.testing.expectEqualStrings("198.51.100.9", r.param("target"));
 }
 
 test "ctx: json field extraction from body" {

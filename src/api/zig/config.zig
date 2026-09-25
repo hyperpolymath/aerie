@@ -29,10 +29,19 @@ pub const Config = struct {
     smokeping_url: []const u8 = "http://smokeping:80",
     verisim_url: []const u8 = "http://verisim:8084",
 
-    /// Phase 2 flips the default to .deny when the keystore lands;
-    /// until then .open preserves the Phase-1 permissive behaviour —
-    /// honestly, not silently.
-    auth_mode: AuthMode = .open,
+    /// Deny-by-default (Phase 2): without a valid, entitled API key the
+    /// gateway refuses everything except public routes (health, meta).
+    /// Local development: AERIE_AUTH_MODE=open. This is the secure
+    /// default; the permissive phase is over.
+    auth_mode: AuthMode = .deny,
+
+    /// Raw AERIE_API_KEYS env value (semicolon-separated key specs) —
+    /// consumed by the keystore; config.zig stays the only getenv
+    /// reader in the gateway.
+    api_keys_env: []const u8 = "",
+    /// The KYAML file path (AERIE_CONFIG), for the keystore's
+    /// api_keys: list. Null when configuration is env-only.
+    config_path: ?[]const u8 = null,
 
     /// Environment accessor, injectable for tests.
     pub const Env = *const fn (name: []const u8) ?[]const u8;
@@ -123,6 +132,8 @@ pub const Config = struct {
             if (std.mem.eql(u8, v, "deny")) cfg.auth_mode = .deny;
             if (std.mem.eql(u8, v, "open")) cfg.auth_mode = .open;
         }
+        if (env("AERIE_API_KEYS")) |v| cfg.api_keys_env = arena.dupe(u8, v) catch cfg.api_keys_env;
+        if (env("AERIE_CONFIG")) |v| cfg.config_path = arena.dupe(u8, v) catch cfg.config_path;
         return cfg;
     }
 
@@ -170,7 +181,8 @@ test "config: defaults match the compose topology" {
     try std.testing.expectEqual(@as(u16, 4000), cfg.port);
     try std.testing.expect(cfg.rest_enabled and cfg.graphql_enabled and cfg.grpc_enabled);
     try std.testing.expectEqualStrings("http://librespeed:80", cfg.librespeed_url);
-    try std.testing.expectEqual(AuthMode.open, cfg.auth_mode);
+    // deny-by-default: the permissive phase is over
+    try std.testing.expectEqual(AuthMode.deny, cfg.auth_mode);
 }
 
 test "config: env overrides defaults" {
@@ -180,10 +192,17 @@ test "config: env overrides defaults" {
         .{ "PORT", "4321" },
         .{ "ENABLE_GRPC", "false" },
         .{ "LIBRESPEED_URL", "http://probe:9999" },
+        .{ "AERIE_AUTH_MODE", "open" },
+        .{ "AERIE_API_KEYS", "aaaaaaaaaaaaaaaaaaaa-one;bbbbbbbbbbbbbbbbbbbb-two:telemetry" },
     }));
     try std.testing.expectEqual(@as(u16, 4321), cfg.port);
     try std.testing.expect(!cfg.grpc_enabled);
     try std.testing.expectEqualStrings("http://probe:9999", cfg.librespeed_url);
+    try std.testing.expectEqual(AuthMode.open, cfg.auth_mode);
+    try std.testing.expectEqualStrings(
+        "aaaaaaaaaaaaaaaaaaaa-one;bbbbbbbbbbbbbbbbbbbb-two:telemetry",
+        cfg.api_keys_env,
+    );
 }
 
 test "config: kyaml overlay and typo rejection" {

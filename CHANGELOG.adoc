@@ -60,6 +60,34 @@ https://github.com/hyperpolymath/aerie/pulls[hyperpolymath/aerie].
 
 === Added
 
+* The weave, Phase 2 — aspects as data:
+  `src/api/zig/aspects.zig` runs the five-step pipeline (cache read ->
+  produce -> envelope -> cache write -> audit) ONCE; resolvers.zig's
+  five hand-copied pipelines collapse to producers plus aspect lists
+  (`telemetry_aspects` = cache:30s, enveloped, audited; audit is never
+  cached; temporal is dual-audited to Redis AND VerisimDB). REST, gRPC
+  and GraphQL all resolve through the same pipelines now. Cached
+  responses are audited too (the old code skipped audit on cache
+  hits); the temporal producer also fixes a dangling-slice bug in the
+  as_of default-time path.
+* `src/api/zig/keystore.zig` — API keys and entitlements as data
+  (AERIE_API_KEYS / KYAML api_keys: "key:name:mod1,mod2"), with
+  constant-time compares and no early exit. `auth_mode` now defaults
+  to DENY: missing/unknown keys get 401, unentitled modules 403;
+  health and meta stay public; every decision — allowed or not — is
+  audited. Dev posture: AERIE_AUTH_MODE=open (compose sets it).
+* `/api/v1/meta` — the gateway describes itself from the same route
+  and aspect tables the dispatcher uses: paths, verbs, modules,
+  aspects, auth posture, versions. The description cannot drift from
+  the behaviour because it IS the behaviour.
+
+=== Changed
+
+* `policyContextString` now states phase2-weave without the false
+  "entitlements=all" claim.
+
+=== Added (phase 1)
+
 * Gateway skeleton, Phase 1 of the aspect weave —
   `src/api/zig/{kyaml,config,ctx,errors,router,respond}.zig`:
   the KYAML parser (strict KEP-5295 subset, estate rule Y-3); typed

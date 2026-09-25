@@ -20,10 +20,12 @@ const t = @import("types.zig");
 const ctx = @import("ctx.zig");
 const res = @import("resolvers.zig");
 const pol = @import("policy.zig");
+const config = @import("config.zig");
 const prf = @import("proof.zig");
 const vg = @import("verb_governance.zig");
 const respond = @import("respond.zig");
 const errors = @import("errors.zig");
+const aspects = @import("aspects.zig");
 
 pub const Resolver = *const fn (*ctx.Ctx) void;
 
@@ -32,6 +34,12 @@ pub const Route = struct {
     verbs: []const []const u8,
     module: []const u8,
     resolver: Resolver,
+    /// Public routes bypass the deny-by-default gate (health, meta).
+    /// They are still policy-evaluated and audited.
+    public: bool = false,
+    /// The aspects this resolution runs (single source: the consts in
+    /// resolvers.zig; rendered by /api/v1/meta).
+    aspects: []const aspects.Aspect = &.{},
 };
 
 /// THE table. Longest-prefix wins; boundary-guarded (a route matches
@@ -39,12 +47,13 @@ pub const Route = struct {
 /// nothing. gRPC is dispatched by the /grpc/ prefix (method names are
 /// dynamic) and is not table-mapped.
 pub const routes = [_]Route{
-    .{ .path = "/api/v1/health", .verbs = &.{ "GET", "OPTIONS" }, .module = "health", .resolver = healthResolver },
-    .{ .path = "/api/v1/telemetry", .verbs = &.{ "GET", "OPTIONS" }, .module = "telemetry", .resolver = telemetryResolver },
-    .{ .path = "/api/v1/routes", .verbs = &.{ "GET", "OPTIONS" }, .module = "routes", .resolver = routesResolver },
-    .{ .path = "/api/v1/audit/temporal", .verbs = &.{ "GET", "OPTIONS" }, .module = "temporal_audit", .resolver = temporalResolver },
-    .{ .path = "/api/v1/audit", .verbs = &.{ "GET", "OPTIONS" }, .module = "audit", .resolver = auditResolver },
-    .{ .path = "/api/v1/smokeping", .verbs = &.{ "GET", "OPTIONS" }, .module = "smokeping", .resolver = smokepingResolver },
+    .{ .path = "/api/v1/health", .verbs = &.{ "GET", "OPTIONS" }, .module = "health", .resolver = healthResolver, .public = true },
+    .{ .path = "/api/v1/meta", .verbs = &.{ "GET", "OPTIONS" }, .module = "meta", .resolver = metaResolver, .public = true },
+    .{ .path = "/api/v1/telemetry", .verbs = &.{ "GET", "OPTIONS" }, .module = "telemetry", .resolver = telemetryResolver, .aspects = &res.telemetry_aspects },
+    .{ .path = "/api/v1/routes", .verbs = &.{ "GET", "OPTIONS" }, .module = "routes", .resolver = routesResolver, .aspects = &res.routes_aspects },
+    .{ .path = "/api/v1/audit/temporal", .verbs = &.{ "GET", "OPTIONS" }, .module = "temporal_audit", .resolver = temporalResolver, .aspects = &res.temporal_aspects },
+    .{ .path = "/api/v1/audit", .verbs = &.{ "GET", "OPTIONS" }, .module = "audit", .resolver = auditResolver, .aspects = &res.audit_aspects },
+    .{ .path = "/api/v1/smokeping", .verbs = &.{ "GET", "OPTIONS" }, .module = "smokeping", .resolver = smokepingResolver, .aspects = &res.smokeping_aspects },
     .{ .path = "/graphql", .verbs = &.{ "GET", "POST", "OPTIONS" }, .module = "graphql", .resolver = graphqlResolver },
 };
 
@@ -105,14 +114,21 @@ pub fn dispatch(c: *ctx.Ctx) void {
     if (std.mem.startsWith(u8, c.path, "/grpc/")) {
         const method_name = c.path["/grpc/".len..];
         const grpc_method = if (method_name.len > 0) method_name else c.jsonStrField("method");
-        c.policy = pol.evaluatePolicy(c.header("x-api-key"), grpc_method);
+        c.policy = pol.evaluatePolicy(c.keystore, c.cfg.auth_mode, c.header("x-api-key"), grpc_method);
+        if (!c.policy.allowed) {
+            enforceAuth(c);
+            return;
+        }
         grpcDispatch(c, grpc_method);
         return;
     }
 
     // Table routing.
     const route = find(c.path) orelse {
-        c.policy = pol.evaluatePolicy(c.header("x-api-key"), "unknown");
+        // Unknown routes stay stealth-404 — the policy decision is still
+        // evaluated and audited, but never leaks route existence.
+        c.policy = pol.evaluatePolicy(c.keystore, c.cfg.auth_mode, c.header("x-api-key"), "unknown");
+        res.logAudit(c.redis, c.policy);
         respond.respond(c, 404, notFoundJson(c));
         return;
     };
@@ -121,18 +137,36 @@ pub fn dispatch(c: *ctx.Ctx) void {
     // Verb governance (stealth mode: 404 + timing jitter on denial).
     if (!verbAllowed(route, c.method)) {
         vg.stealthDelay();
-        c.policy = pol.evaluatePolicy("", route.module);
-        respond.respondError(c, vg.denialStatusCode(.{
-            .allowed = false, .matched = true, .stealth = true,
-            .rule_name = undefined, .rule_len = 0, .verb = undefined, .verb_len = 0,
-        }), "not found");
+        c.policy = pol.evaluatePolicy(c.keystore, c.cfg.auth_mode, "", route.module);
+        res.logAudit(c.redis, c.policy);
+        respond.respondError(c, 404, "not found");
         return;
     }
 
-    // Policy gate — with the REAL API key at last (V2 headers).
-    c.policy = pol.evaluatePolicy(c.header("x-api-key"), route.module);
+    // Policy gate — deny-by-default with keystore entitlements; public
+    // routes (health, meta) are exempt but still evaluated and audited.
+    c.policy = pol.evaluatePolicy(c.keystore, c.cfg.auth_mode, c.header("x-api-key"), route.module);
+    if (!route.public and !c.policy.allowed) {
+        enforceAuth(c);
+        return;
+    }
+    if (route.public and !c.policy.allowed) {
+        // Public route, denied key: serve, but audit the denial.
+        res.logAudit(c.redis, c.policy);
+    }
 
     route.resolver(c);
+}
+
+/// Respond to a policy denial: 401 when the key is absent/unknown,
+/// 403 when the key is valid but unentitled. The denial is audited.
+fn enforceAuth(c: *ctx.Ctx) void {
+    res.logAudit(c.redis, c.policy);
+    const code: u16 = if (c.policy.access_level == .authenticated) 403 else 401;
+    var rb: [128]u8 = undefined;
+    const reason = std.fmt.bufPrint(&rb, "{s}", .{std.mem.sliceTo(&c.policy.reason, 0)})
+        catch "not authorized";
+    respond.respondError(c, code, reason);
 }
 
 // ---------------------------------------------------------------------------
@@ -144,47 +178,51 @@ fn healthResolver(c: *ctx.Ctx) void {
     respond.respond(c, 200, healthJson(c));
 }
 
+fn metaResolver(c: *ctx.Ctx) void {
+    respond.respond(c, 200, metaJson(c));
+}
+
 fn telemetryResolver(c: *ctx.Ctx) void {
-    respond.respond(c, 200, res.resolveTelemetry(c.redis, c.policy, c.out_buf, c.arena));
+    res.resolveTelemetry(c);
 }
 
 fn routesResolver(c: *ctx.Ctx) void {
-    const target = c.queryParam("target");
+    const target = c.param("target");
     if (target.len == 0) {
-        respond.respondError(c, 400, "missing required query parameter: target (usage: /api/v1/routes?target=<ip_or_hostname>)");
+        respond.respondError(c, 400, "missing required parameter: target (REST: ?target=…; gRPC body field target)");
         return;
     }
-    respond.respond(c, 200, res.resolveRouteForensics(target, c.redis, c.policy, c.out_buf, c.arena));
+    res.resolveRoutes(c, target);
 }
 
 fn temporalResolver(c: *ctx.Ctx) void {
-    const mode = c.queryParam("mode");
+    const mode = c.param("mode");
     if (mode.len == 0) {
-        respond.respondError(c, 400, "missing required query parameter: mode (usage: /api/v1/audit/temporal?mode=as_of&time=...; available: as_of, between, history)");
+        respond.respondError(c, 400, "missing required parameter: mode (as_of, between, history)");
         return;
     }
-    const params = res.TemporalParams{
-        .time = c.queryParam("time"),
-        .start = c.queryParam("start"),
-        .end = c.queryParam("end"),
-        .event_id = c.queryParam("event_id"),
-        .limit = std.fmt.parseInt(u32, c.queryParam("limit"), 10) catch 50,
+    const params = t.TemporalParams{
+        .time = c.param("time"),
+        .start = c.param("start"),
+        .end = c.param("end"),
+        .event_id = c.param("event_id"),
+        .limit = std.fmt.parseInt(u32, c.param("limit"), 10) catch 50,
     };
-    respond.respond(c, 200, res.resolveTemporalAudit(mode, params, c.redis, c.verisim, c.policy, c.out_buf, c.arena));
+    res.resolveTemporal(c, mode, params);
 }
 
 fn auditResolver(c: *ctx.Ctx) void {
-    const limit = std.fmt.parseInt(u32, c.queryParam("limit"), 10) catch 50;
-    respond.respond(c, 200, res.resolveAudit(limit, c.redis, c.policy, c.out_buf, c.arena));
+    const limit = std.fmt.parseInt(u32, c.param("limit"), 10) catch 50;
+    res.resolveAudit(c, limit);
 }
 
 fn smokepingResolver(c: *ctx.Ctx) void {
-    const target = c.queryParam("target");
+    const target = c.param("target");
     if (target.len == 0) {
-        respond.respondError(c, 400, "missing required query parameter: target (usage: /api/v1/smokeping?target=<hostname_or_ip>)");
+        respond.respondError(c, 400, "missing required parameter: target (REST: ?target=…; gRPC body field target)");
         return;
     }
-    respond.respond(c, 200, res.resolveSmokeping(target, c.redis, c.policy, c.out_buf, c.arena));
+    res.resolveSmokeping(c, target);
 }
 
 fn graphqlResolver(c: *ctx.Ctx) void {
@@ -199,13 +237,13 @@ fn graphqlResolver(c: *ctx.Ctx) void {
         respond.respond(c, 200, "{\"errors\":[{\"message\":\"Missing query field in request body\"}]}");
         return;
     }
-    respond.respond(c, 200, res.resolveGraphqlQuery(query, c.redis, c.verisim, c.policy, c.out_buf, c.arena));
+    res.resolveGraphqlQuery(c, query);
 }
 
 /// gRPC-JSON dispatch (method name from path or body).
 fn grpcDispatch(c: *ctx.Ctx, method_name: []const u8) void {
     if (std.mem.eql(u8, method_name, "GetTelemetrySnapshot")) {
-        respond.respond(c, 200, res.resolveTelemetry(c.redis, c.policy, c.out_buf, c.arena));
+        res.resolveTelemetry(c);
         return;
     }
     if (std.mem.eql(u8, method_name, "GetRouteForensicsSnapshot")) {
@@ -214,12 +252,11 @@ fn grpcDispatch(c: *ctx.Ctx, method_name: []const u8) void {
             respond.respondError(c, 400, "target field required");
             return;
         }
-        respond.respond(c, 200, res.resolveRouteForensics(target, c.redis, c.policy, c.out_buf, c.arena));
+        res.resolveRoutes(c, target);
         return;
     }
     if (std.mem.eql(u8, method_name, "GetAuditSnapshot")) {
-        const limit = c.jsonIntField("limit") orelse @as(u32, 50);
-        respond.respond(c, 200, res.resolveAudit(limit, c.redis, c.policy, c.out_buf, c.arena));
+        res.resolveAudit(c, c.jsonIntField("limit") orelse 50);
         return;
     }
     if (std.mem.eql(u8, method_name, "GetSmokePingSnapshot")) {
@@ -228,7 +265,7 @@ fn grpcDispatch(c: *ctx.Ctx, method_name: []const u8) void {
             respond.respondError(c, 400, "target field required");
             return;
         }
-        respond.respond(c, 200, res.resolveSmokeping(target, c.redis, c.policy, c.out_buf, c.arena));
+        res.resolveSmokeping(c, target);
         return;
     }
     if (std.mem.eql(u8, method_name, "GetTemporalAuditSnapshot")) {
@@ -237,14 +274,14 @@ fn grpcDispatch(c: *ctx.Ctx, method_name: []const u8) void {
             respond.respondError(c, 400, "mode field required (as_of, between, history)");
             return;
         }
-        const params = res.TemporalParams{
+        const params = t.TemporalParams{
             .time = c.jsonStrField("time"),
             .start = c.jsonStrField("start"),
             .end = c.jsonStrField("end"),
             .event_id = c.jsonStrField("event_id"),
             .limit = c.jsonIntField("limit") orelse 50,
         };
-        respond.respond(c, 200, res.resolveTemporalAudit(mode, params, c.redis, c.verisim, c.policy, c.out_buf, c.arena));
+        res.resolveTemporal(c, mode, params);
         return;
     }
     var eb: [256]u8 = undefined;
@@ -261,7 +298,7 @@ fn grpcDispatch(c: *ctx.Ctx, method_name: []const u8) void {
 // Reflective renderings (health + not-found describe the live table)
 // ---------------------------------------------------------------------------
 
-const GATEWAY_VERSION = "0.3.0";
+const GATEWAY_VERSION = "0.4.0";
 
 /// Health JSON — includes the live gnosis pool state handed in via Ctx.
 pub fn healthJson(c: *ctx.Ctx) []const u8 {
@@ -281,14 +318,54 @@ pub fn healthJson(c: *ctx.Ctx) []const u8 {
             "\"timestamp\":\"{s}\",\"protocols\":{{\"rest\":{s},\"graphql\":{s},\"grpc\":{s}}}," ++
             "\"active_protocols\":{d},\"bound_ports\":{d}," ++
             "\"verb_governance\":true,\"stealth_mode\":true,\"proof_mode\":\"light\"," ++
-            "\"policy_phase\":2,\"pool\":{{\"slot_state\":{d}}}}}",
+            "\"policy_phase\":2,\"auth\":\"{s}\",\"pool\":{{\"slot_state\":{d}}}}}",
         .{
             GATEWAY_VERSION,                                                          ts,
             if (cfg.rest_enabled) "true" else "false",                                if (cfg.graphql_enabled) "true" else "false",
             if (cfg.grpc_enabled) "true" else "false",                                active,
-            bound,                                                                     c.pool_state,
+            bound,                                                                    @tagName(cfg.auth_mode),
+            c.pool_state,
         },
     ) catch "{\"status\":\"healthy\"}";
+}
+
+/// /api/v1/meta — the gateway describes itself from the same tables the
+/// dispatcher uses: routes, verbs, modules, aspects, auth posture,
+/// versions. The description cannot drift from the behaviour because it
+/// IS the behaviour. No key material, no URLs, no secrets.
+pub fn metaJson(c: *ctx.Ctx) []const u8 {
+    var fbs = std.io.fixedBufferStream(c.out_buf);
+    const w = fbs.writer();
+    w.print("{{\"service\":\"aerie-gateway\",\"version\":\"{s}\",\"policy_phase\":2," ++
+        "\"auth\":\"{s}\",\"aspects\":[\"cache\",\"enveloped\",\"audited\",\"dual_audited\"]," ++
+        "\"forensics\":\"FS-0 (untrusted search, trusted checking)\"," ++
+        "\"routes\":[", .{ GATEWAY_VERSION, @tagName(c.cfg.auth_mode) }) catch {};
+    for (&routes, 0..) |*route, i| {
+        if (i > 0) w.writeByte(',') catch {};
+        w.print("{{\"path\":\"{s}\",\"verbs\":[", .{route.path}) catch {};
+        for (route.verbs, 0..) |v, j| {
+            if (j > 0) w.writeByte(',') catch {};
+            w.print("\"{s}\"", .{v}) catch {};
+        }
+        w.writeAll("],\"module\":\"") catch {};
+        w.writeAll(route.module) catch {};
+        w.writeByte('"') catch {};
+        if (route.public) w.writeAll(",\"public\":true") catch {};
+        if (route.aspects.len > 0) {
+            w.writeAll(",\"aspects\":[") catch {};
+            var abuf: [32]u8 = undefined;
+            for (route.aspects, 0..) |asp, j| {
+                if (j > 0) w.writeByte(',') catch {};
+                w.writeByte('"') catch {};
+                w.writeAll(aspects.describe(asp, &abuf)) catch {};
+                w.writeByte('"') catch {};
+            }
+            w.writeAll("]") catch {};
+        }
+        w.writeAll("}") catch {};
+    }
+    w.writeAll("]}") catch {};
+    return fbs.getWritten();
 }
 
 /// Not-found JSON — lists only enabled endpoints, derived from the table.
@@ -324,6 +401,32 @@ test "router: boundary-guarded longest-prefix match" {
     // sub-resource falls through to the parent route
     try std.testing.expectEqualStrings("audit", find("/api/v1/audit/other").?.module);
     try std.testing.expect(find("/nope") == null);
+}
+
+test "router: meta renders the live table (self-description)" {
+    var arena_inst = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_inst.deinit();
+    var out: [4096]u8 = undefined;
+    const cfg = config.Config{};
+    var c = ctx.Ctx{
+        .arena = arena_inst.allocator(),
+        .method = "GET",
+        .path = "/api/v1/meta",
+        .query = "",
+        .body = "",
+        .header_names = null,
+        .header_values = null,
+        .header_count = 0,
+        .cfg = &cfg,
+        .redis = undefined,
+        .verisim = undefined,
+        .out_buf = &out,
+    };
+    const meta = metaJson(&c);
+    // telemetry row carries its aspects; meta itself is public
+    try std.testing.expect(std.mem.indexOf(u8, meta, "\"aspects\":[\"cache:30s\",\"enveloped\",\"audited\"]") != null);
+    try std.testing.expect(std.mem.indexOf(u8, meta, "\"module\":\"meta\",\"public\":true") != null);
+    try std.testing.expect(std.mem.indexOf(u8, meta, "\"auth\":\"deny\"") != null);
 }
 
 test "router: verbs enforced per route" {

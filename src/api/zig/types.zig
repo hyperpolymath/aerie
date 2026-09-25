@@ -27,6 +27,16 @@ pub const AccessLevel = enum {
     invalid,      // Malformed API key
 };
 
+/// TemporalParams bundles query parameters for temporal audit queries
+/// (lives here so ctx, resolvers and adapters share one definition).
+pub const TemporalParams = struct {
+    time:     []const u8 = "",
+    start:    []const u8 = "",
+    end:      []const u8 = "",
+    event_id: []const u8 = "",
+    limit:    u32        = 50,
+};
+
 /// PolicyDecision captures the result of evaluating a request against
 /// the policy gate. Every decision is recorded in the Redis audit log.
 pub const PolicyDecision = struct {
