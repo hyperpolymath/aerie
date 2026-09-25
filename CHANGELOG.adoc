@@ -30,6 +30,12 @@ https://github.com/hyperpolymath/aerie/pulls[hyperpolymath/aerie].
 * `tests/idris2/` — proven-tests-format Idris2 suite scaffold.
 * `docs/REPO-SETTINGS.adoc`, `docs/wiki-plan.adoc`,
   `docs/reports/quality/REMEDIATION-PLAN.md`, `docs/SETUP.adoc`.
+* `docs/ESTATE-PROPAGATION.adoc` — owner runbook: rolling the fixed
+  issue forms and check-suite health verification across the
+  hyperpolymath and metadatastician estates (layers: estate `.github`
+  defaults, per-repo PRs, template-source fix, startup-failure sweep).
+* `scripts/propagate-github-templates.sh` — gh-driven per-repo PR
+  rollout of the canonical issue forms across both estates.
 * Conventional dotfiles: `.envrc`, `.mailmap`, `.gitleaksignore`,
   `.cicd-hygiene-allow`, `.hypatia-ignore`, `.tool-versions`.
 
@@ -43,6 +49,20 @@ https://github.com/hyperpolymath/aerie/pulls[hyperpolymath/aerie].
 * `Justfile` — canonical verbs added: `setup`, `build`, `test`, `bench`,
   `format`, `clean`, `release`, `install`, `guix-shell`, `container-build`,
   `man`, `cookbook`.
+* `setup.sh` — rewritten as the guaranteed zero-prerequisite path
+  (issue #91): with only bash + curl it installs `just` and the pinned
+  Zig toolchain (checksum-verified from the ziglang.org release index)
+  into a user-local dir — no sudo — then runs `just doctor`. Safe to
+  re-run; cargo/brew/mise remain fallbacks, not requirements.
+* `Justfile` — `setup` no longer gates `heal` behind a passing `doctor`
+  (a failing doctor would abort before the repair could run); both
+  `setup` and `heal` delegate to `./setup.sh`; `doctor` now requires
+  Zig 0.15.2 (matching `build.zig`/mise pins; was 0.13) and lists podman
+  as an optional warning.
+* `README.md`, `QUICKSTART-DEV.adoc`, `QUICKSTART-USER.adoc`,
+  `docs/SETUP.adoc` — the zero-prerequisite route (Approach 3) is now
+  named explicitly and recommended first; the AI-assisted prompt starts
+  from `./setup.sh` instead of assuming `just` is already present.
 * `CHANGELOG.md` → `CHANGELOG.adoc` (estate documentation format).
 * `ARCHITECTURE.md` — rewritten from scaffold filler to the actual
   architecture law and layout.
@@ -57,6 +77,13 @@ https://github.com/hyperpolymath/aerie/pulls[hyperpolymath/aerie].
   (`src/api/v/`), not "zig"; the comment contradicted the law it quoted.
 * `.claude/CLAUDE.md` — "Never Zig, Rust, or C" self-contradiction (Zig IS the
   API language) and the "Zig (src/api/v/)" mislabel corrected.
+* `.github/ISSUE_TEMPLATE/bug_report.yml` (issue #92) — the
+  "What happened" field no longer renders differently from its
+  neighbours (`render: shell` removed; all free-text fields are the same
+  plain textarea), and no content field is required any more — only the
+  two attestation checkboxes still gate submission.
+  `feature_request.yml` relaxed the same way, so irrelevant fields can
+  simply be left blank on both forms.
 
 === Added
 

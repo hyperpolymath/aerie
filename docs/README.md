@@ -6,10 +6,11 @@ Setup (four approaches), man pages, reports (quality/security), the wiki plan, a
 
 | Entry | Purpose |
 |-------|---------|
-| `SETUP.adoc` | four-approach setup |
+| `SETUP.adoc` | four-approach setup (Approach 3 = zero-prerequisite) |
 | `man/` | groff man pages |
 | `reports/` | audit and remediation reports |
 | `wiki-plan.adoc` | wiki development plan (berrywiki pattern) |
 | `REPO-SETTINGS.adoc` | measured vs canonical GitHub settings + apply commands |
+| `ESTATE-PROPAGATION.adoc` | owner runbook: propagate issue forms + check-suite health across the hyperpolymath and metadatastician estates |
 
 See [`aerie_chora.deed`](../aerie_chora.deed) for the canonical machine-readable description of this layer.

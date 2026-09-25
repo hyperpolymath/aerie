@@ -1,0 +1,246 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Propagating repo checks &amp; issue templates across the estates
+:toc: macro
+:toclevels: 2
+
+_Owner runbook: how to take what was fixed on `hyperpolymath/aerie`
+(issues #91 and #92 — optional, consistently-typed issue forms and a
+guaranteed zero-prerequisite setup path) and roll it out across the
+**hyperpolymath** (user account) and **metadatastician** (organisation)
+estates — and how to confirm the check suites on those repos actually
+run rather than dying at startup._
+
+Measured and written 2026-09-25 against the live GitHub state.
+
+toc::[]
+
+== 0. What "healthy" means (the target state)
+
+A repo in either estate is healthy when:
+
+. It carries the canonical issue forms from `.github/ISSUE_TEMPLATE/`
+  in this repo (post-#92): all free-text fields are the same plain
+  `textarea` type (no `render:` split) and **no content field is
+  required**; only the two attestation checkboxes on the bug form gate
+  submission. Repos without their own templates may instead inherit
+  the estate defaults (layer A).
+. It has a zero-prerequisite setup path: `./setup.sh` bootstraps `just`
+  (and the pinned toolchain) using only bash + curl, then runs
+  `just doctor` (post-#91 pattern in this repo).
+. Its workflows **schedule** when they should. The known estate failure
+  mode is workflows dying with `startup_failure` / zero jobs — green in
+  no list, red in the run list, and **not enforcing anything** (see
+  <<s5>>).
+. The branch gate is active: ruleset `Optimus-Branch` enabled with
+  `required_status_checks` naming the GATE workflow set (per
+  `docs/REPO-SETTINGS.adoc` §Delta-1 and `hyperpolymath/standards`
+  `config/settings/repo.json`).
+
+== 1. Layer A — estate default health files (`.github` repos)
+
+Both estates already own the special `.github` repo
+(`hyperpolymath/.github`, `metadatastician/.github`; verified
+2026-09-25). Default community-health files placed there apply to every
+repo in the estate that does **not** define its own.
+
+Copy the fixed forms from this repo into each estate's `.github` repo,
+replacing template mint-placeholders with the estate's real values:
+
+[source,sh]
+----
+for EST in hyperpolymath metadatastician; do
+  gh repo view "$EST/.github" >/dev/null   # exists for both today
+  git clone --depth 1 "https://github.com/$EST/.github" "/tmp/$EST.github"
+  mkdir -p "/tmp/$EST.github/ISSUE_TEMPLATE"
+  for f in bug_report.yml feature_request.yml config.yml; do
+    sed -e "s/{{FORGE}}/github.com/g" \
+        -e "s/{{OWNER}}/$EST/g" \
+        .github/ISSUE_TEMPLATE/"$f" > "/tmp/$EST.github/ISSUE_TEMPLATE/$f"
+  done
+  # config.yml keeps {{REPO}} intentionally? NO — for estate defaults,
+  # relative admonition headers suffice; replace the security-advisory
+  # and discussions links with literal estate URLs, e.g.:
+  #   https://github.com/<that-repo>/security/advisories/new
+  # GitHub expands contact_links relative to the *viewed* repo for
+  # enterprise templates only; for personal/org .github repos, leave a
+  # generic SECURITY.md pointer instead of a {{REPO}} URL.
+  ( cd "/tmp/$EST.github" && git add -A && \
+    git commit -m "chore(github): estate default issue forms (aerie #92 class)" && \
+    git push )
+done
+----
+
+Notes:
+
+* Estate defaults are a **fallback**, not an override: any repo with its
+  own `.github/ISSUE_TEMPLATE` ignores them → those repos need layer B.
+* Review `contact_links` in `config.yml` before pushing — mint
+  placeholders (`{{FORGE}}/{{OWNER}}/{{REPO}}`) must not ship to the
+  estate defaults.
+
+== 2. Layer B — per-repo PRs for repos with their own templates
+
+`scripts/propagate-github-templates.sh` (in this repo) finds every
+non-fork, non-archived repo in both estates, checks for an existing
+`.github/ISSUE_TEMPLATE`, and raises a per-repo PR syncing the canonical
+forms (placeholders rendered per repo, conventional-commit subject,
+`conformance` label best-effort).
+
+[source,sh]
+----
+# 1. survey (read-only; full estates take several minutes — ~1 API call/repo)
+./scripts/propagate-github-templates.sh --dry-run
+./scripts/propagate-github-templates.sh --dry-run --only <repo>   # spot-check
+
+# 2. apply — one PR per repo that already carries its own templates
+./scripts/propagate-github-templates.sh --apply
+
+# 3. optional: also PR repos that would otherwise inherit estate defaults
+./scripts/propagate-github-templates.sh --apply --all
+----
+
+Then, per repo: review diff (should be templates-only), confirm the
+GATE workflows on the PR **scheduled** (they must appear in the Checks
+tab — an empty/absent check list is the failure signature, see
+<<s5>>), squash-merge, delete branch.
+
+== 3. Layer C — fix the template source (future mints)
+
+So the next minted repo is born correct rather than needing layer B:
+
+* Update `rsr-template-repo` (the estate template the `mise.toml`
+  discipline comment and `docs/REPO-SETTINGS.adoc` canon point at) with
+  the same `.github/ISSUE_TEMPLATE/*`, the `./setup.sh` zero-prerequisite
+  bootstrap, and the Justfile `setup`/`heal` wiring from this repo.
+* Refresh the `launch-scaffolder` spec inputs (`aerie.launcher.a2ml`
+  pattern) where they capture onboarding text, so generated launchers
+  reference `./setup.sh` first.
+* Where `instant-sync.yml`/the standards sync can push template
+  refreshes to already-minted repos, cut a sync release; everything it
+  misses is covered by layer B.
+
+== 4. Known live gaps on *this* repo (do these first)
+
+Measured 2026-09-25 (see also `docs/REPO-SETTINGS.adoc` §Delta-9, same
+signature on 2026-09-23):
+
+* **Label Triage `startup_failure`** on the `issues` event — it fired
+  (and died instantly, zero jobs) when #91 and #92 were opened. The
+  estate gate requires the workflow path to be listed in the repo's
+  `.github/workflows/actions.lock`; re-lock per
+  `hyperpolymath/standards` docs, or re-check the Actions allow-list
+  (next bullet). Diagnosis requires owner token — the audit bot gets
+  403 on the Actions permissions endpoints.
+* **Red on main**: `Governance` (24s fail), `Mirror to Git Forges`,
+  `Secret Scanner` runs failing on the last main push. Re-run/read with:
+  `gh run list --branch main --limit 10`.
+* **Owner-only settings** (`docs/REPO-SETTINGS.adoc` delta list): enable
+  `Optimus-Branch` ruleset + populate its `required_status_checks`
+  contexts; set `allow_merge_commit=false` (squash-only canon); verify
+  Actions `allowed_actions=selected` with non-empty `patterns_allowed`
+  per `config/settings/actions-allowlist.json`.
+
+== 5. [[s5]]The silent failure mode: checks that never schedule
+
+The single most important estate-wide check: an **empty Actions
+allow-list** (`allowed_actions: all` is fine; `selected` with empty
+`patterns_allowed` is fatal) makes *every* workflow — including the PR
+gates — die at startup with `jobs.total_count == 0` and no check run.
+Gates look quiet while nothing enforces. Audit both estates:
+
+[source,sh]
+----
+for EST in hyperpolymath metadatastician; do
+  KIND=$(gh api users/$EST --jq .type)
+  [ "$KIND" = Organization ] && REL="orgs/$EST" || REL="users/$EST"
+  gh api --paginate "$REL/repos?per_page=100" --jq '.[].full_name' |
+  while read -r R; do
+    P=$(gh api "repos/$R/actions/permissions" 2>/dev/null \
+        --jq '[.enabled, .allowed_actions] | @tsv') || P="unreadable"
+    N=$(gh api "repos/$R/actions/permissions/selected-actions" \
+        --jq '.patterns_allowed | length' 2>/dev/null || echo "-")
+    printf '%-55s perms=%-18s patterns=%s\n' "$R" "${P:-unreadable}" "$N"
+  done
+done
+----
+
+* `patterns=0` ⇒ fix: re-apply the estate allow-list
+  (`gh api -X PUT repos/$R/actions/permissions ... -f allowed_actions=selected`,
+  then PUT `selected-actions` with the canon patterns; commands in
+  `docs/REPO-SETTINGS.adoc` §3).
+* `unreadable` ⇒ the token used lacks admin on that repo; run with the
+  estate owner token.
+* Follow with: last-3-runs green check
+  (`gh run list -R "$R" --branch main --limit 3`), and a test issue to
+  watch Label Triage complete.
+
+== 6. Optional: a weekly estate sweep so this never decays
+
+Add this to **each** estate's `.github` repo
+(e.g. `.github/workflows/estate-health-sweep.yml`); it re-audits the
+allow-list + last-run health and files/updates a `conformance` tracking
+issue in the estate governance repo on regression:
+
+[source,yaml]
+----
+name: Estate health sweep
+on:
+  schedule: [{ cron: "0 6 * * 1" }]
+  workflow_dispatch:
+permissions: { contents: read, issues: write }
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Audit every repo and file a conformance issue on regression
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EST="${{ github.repository_owner }}"
+          gh api users/$EST --jq .type | grep -q Organization \
+            && REL="orgs/$EST" || REL="users/$EST"
+          BAD=""
+          gh api --paginate "$REL/repos?per_page=100" \
+            --jq '.[] | select(.archived|not) | .full_name' |
+          while read -r R; do
+            N=$(gh api "repos/$R/actions/permissions/selected-actions" \
+                --jq '.patterns_allowed | length' 2>/dev/null || echo "-")
+            [ "$N" = "0" ] && BAD="$BAD- \`$R\`: empty actions allow-list (checks cannot schedule)\n"
+            gh api "repos/$R/contents/.github/ISSUE_TEMPLATE" >/dev/null 2>&1 \
+              || BAD="$BAD- \`$R\`: no own issue templates (inherits estate defaults — confirm intended)\n"
+          done
+          if [ -n "$BAD" ]; then
+            printf '## Estate health sweep %s\n\n%b' "$(date -I)" "$BAD" \
+              | gh issue create --title "Estate health sweep: attention needed" \
+                  --label conformance --body-file - || true
+          fi
+----
+
+(GITHUB_TOKEN in the `.github` repo can only see that repo — for a real
+cross-estate sweep, run it from the governance repos
+(`metadatastician-governance`, and the hyperpolymath equivalent) with a
+fine-grained PAT or GitHub App token as `ESTATE_TOKEN`.)
+
+== 7. Rollout order & acceptance checklist
+
+. [ ] Fix known gaps on aerie (section 4).
+. [ ] Layer A: estate default forms into `hyperpolymath/.github` and
+      `metadatastician/.github`.
+. [ ] Layer B: `--dry-run` survey, then `--apply`; merge PRs on the
+      high-traffic repos first (aerie pattern as canonical diff).
+. [ ] Layer C: update `rsr-template-repo` + launch-scaffolder so future
+      mints carry the fixed forms and `./setup.sh` bootstrap.
+. [ ] Section 5 sweep: zero `patterns=0` repos; GATE workflows schedule
+      on a test PR per estate.
+. [ ] Section 6 sweep workflow live in both governance repos.
+. [ ] Re-run the sweep a week later; expect zero new findings.
+
+== References
+
+* `docs/REPO-SETTINGS.adoc` — aerie settings vs. estate canon, owner
+  command blocks (rulesets, allow-list, topics, environments).
+* `hyperpolymath/standards` — `config/settings/repo.json`,
+  `config/settings/actions-allowlist.json`, `config/rulesets/base.json`.
+* Aerie issues #91 (zero-prerequisite setup) and #92 (issue-form
+  fields): fixed in this repo; this document is the estate-wide follow-on.
