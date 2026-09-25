@@ -58,7 +58,7 @@ jobs:
           else
             echo "## DEED Manifest Validation" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "Scanned **${A2ML_COUNT}** manifest file(s) (.deed, or legacy .a2ml). See step output for details." >> "$GITHUB_STEP_SUMMARY"
+            echo "Scanned **${MANIFEST_COUNT}** manifest file(s) (.deed, or legacy .a2ml). See step output for details." >> "$GITHUB_STEP_SUMMARY"
           fi
 
   # ---------------------------------------------------------------------------
@@ -100,7 +100,7 @@ jobs:
             cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
           ## K9 Contract Validation
 
-          :warning: **No .a2ml/.deed manifest files found.** Every RSR-compliant repo should have a repo deed (`<reponame>_chora.deed`) at its root.
+          :warning: **No K9 contract files found.** Every RSR repo with config files should carry K9 contracts.
 
           Generate contracts with: `k9iser generate .`
           EOF
@@ -396,7 +396,7 @@ jobs:
 
           | Tool/Format | Status | Notes |
           |-------------|--------|-------|
-          | DEED repo deed (`<reponame>_chora.deed`) | ${A2ML_STATUS} | Required for all RSR repos |
+          | DEED repo deed (`<reponame>_chora.deed`) | ${DEED_STATUS} | Required for all RSR repos |
           | K9 contracts | ${K9_STATUS} | Required for repos with config files |
           | .editorconfig | ${EC_STATUS} | Required for all repos |
           | Groove endpoint | ${GROOVE_STATUS} | Required for service repos |

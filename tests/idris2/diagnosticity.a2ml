@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: MPL-2.0
 # Diagnosticity contract for the aerie model suite (tests/idris2).
 
+name = "aerie-idris2-diagnosticity"
+version = "1.0.0"
+
 [detects]
 condition = "divergence between the aerie specification models (proof envelope well-formedness, policy-gate monotonicity, longest-prefix route matching) and their stated invariants"
 defect_class = "spec-model-drift"

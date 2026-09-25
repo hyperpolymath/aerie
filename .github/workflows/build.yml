@@ -1,10 +1,21 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# build.yml — SonarQube analysis on pushes to main and on PRs.
+# The top-level permissions block is required by the estate workflow
+# security linter (standards governance-reusable: SPDX headers + permissions).
 name: Build
+
 on:
   push:
     branches:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
 jobs:
   sonarqube:
     name: SonarQube
