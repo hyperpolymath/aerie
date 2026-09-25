@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# .gitleaks.toml — aerie-local gitleaks configuration.
+#
+# Extends the estate baseline that secret-scanner-reusable.yml stages into the
+# workspace root as .gitleaks-estate.toml (the gate asserts this exact
+# reference — see "Estate baseline — is it referenced?"). Suppressions live
+# here, not in the baseline: per the baseline's design rule, only universal
+# entries belong there; repo-specific false positives stay beside the code.
+
+[extend]
+path = ".gitleaks-estate.toml"
+
+[allowlist]
+description = "aerie-local false positives (value-anchored, per baseline design rule)"
+regexes = [
+  # www/.well-known/security.txt: `Key-Exchange: Kyber1024-X25519` is a
+  # post-quantum algorithm advertisement, not a credential. generic-api-key
+  # extracts `Kyber1024-X25519` (entropy 3.625 > 3.5, has digits, no
+  # stopwords). Anchored to the whole value so a real secret planted beside
+  # it is still caught.
+  '''^Kyber1024-X25519$''',
+]
