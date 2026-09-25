@@ -12,6 +12,9 @@
 name: Diag Gitleaks
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/diag-gitleaks.yml']
 
 permissions:
   contents: read
