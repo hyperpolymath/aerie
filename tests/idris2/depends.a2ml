@@ -3,6 +3,9 @@
 # yields exit 2 (VOID), and VOID propagates: a battery must reclassify any
 # green downstream of this unit's VOID as VOID.
 
+name = "aerie-idris2-depends"
+version = "1.0.0"
+
 [upstream_units]
 value = "none — self-contained model suite; mirrors src/api/zig/{proof,policy}.zig invariants"
 
