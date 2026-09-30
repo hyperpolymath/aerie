@@ -55,8 +55,8 @@ CONFIG_FILE="/var/mnt/eclipse/repos/aerie/aerie.launcher.a2ml"
 URL=""
 
 
-PID_FILE="/tmp/aerie.pid"
-LOG_FILE="/tmp/aerie.log"
+PID_FILE="${XDG_RUNTIME_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}}/launch-scaffolder/aerie/server.pid"
+LOG_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/launch-scaffolder/aerie/server.log"
 
 # Explicit argv from [runtime].command
 START_COMMAND=(/var/mnt/eclipse/repos/.desktop-tools/launchers/repo-quicklaunch.sh /var/mnt/eclipse/repos/aerie Aerie just tour )
@@ -159,6 +159,8 @@ clear_stale_pid() {
 
 
 start_server() {
+    mkdir -p "$(dirname "$PID_FILE")" "$(dirname "$LOG_FILE")"
+    chmod 0700 "$(dirname "$PID_FILE")" "$(dirname "$LOG_FILE")"
     clear_stale_pid
 if is_running; then
         log "Already running (PID $(cat "$PID_FILE"))"
@@ -243,11 +245,12 @@ write_linux_desktop_file() {
     # keepopen.sh implements the standard fallback ladder: GUI → TUI →
     # bash-at-repo-root. See launcher-standard.adoc §Fallback Ladder.
     local keepopen="/var/mnt/eclipse/repos/.desktop-tools/keepopen.sh"
-    local gui_cmd tui_cmd
+    local gui_cmd tui_cmd quoted_log
+    printf -v quoted_log '%q' "$LOG_FILE"
 # process: GUI = start then tail log so terminal stays open;
     # TUI = just tail the existing log; Shell = repo root.
-    gui_cmd="$LAUNCHER_TARGET --start && tail -f $LOG_FILE"
-    tui_cmd="tail -n 200 -f $LOG_FILE"
+    gui_cmd="$LAUNCHER_TARGET --start && tail -f $quoted_log"
+    tui_cmd="tail -n 200 -f $quoted_log"
 
     cat > "$target" <<EOF
 [Desktop Entry]
