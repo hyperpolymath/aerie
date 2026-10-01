@@ -24,8 +24,6 @@ command = [
     "just",
     "tour",
 ]
-pid-file = "/tmp/aerie.pid"
-log-file = "/tmp/aerie.log"
 
 [icon]
 source = "{repo-dir}/assets/icon-256.png"
