@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
+# This workflow is managed by gh actions-lock.
 # Release workflow — triggered by version tags (v*).
 # Builds the gateway with the pinned Zig toolchain, generates the changelog
 # via git-cliff, creates the GitHub Release, and mints a build-provenance

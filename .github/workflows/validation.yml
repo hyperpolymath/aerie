@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
+# This workflow is managed by gh actions-lock.
 # Validation — the estate diagnostic tools against this repo (protocol
 # Phase 10). Runs on dispatch (and on push to main so findings stay fresh):
 #   * pons-asinorum — depth scanner (dead work, self-contradiction,
