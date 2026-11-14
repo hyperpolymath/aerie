@@ -9,8 +9,8 @@
 (repo-deed
   :schema-version "1.0.0"
   :canonical-name "aerie"
-  :repo-uuid #uuid"84cd32cd-b65b-81d4-8649-7cd4586b5527"
-  :beholding-chora #uuid"0889b37b-defb-831f-973c-e119500db00e"
+  :repo-uuid #u8"gv-clade-index:github.com/hyperpolymath/aerie"
+  :beholding-chora #u8"chora:estate/github.com/hyperpolymath"
   (manifest
     :version "0.1.0"
     :last-updated "2026-09-23"
