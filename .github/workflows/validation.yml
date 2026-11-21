@@ -22,7 +22,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@v4.3.1
 
       - name: Build pons-asinorum
         run: |
@@ -45,7 +45,7 @@ jobs:
           exit 0
 
       - name: Persist report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: pons-asinorum-report
           path: pons-report.txt
@@ -57,7 +57,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@v4.3.1
 
       - name: Run panic-attack (best-effort — repo not publicly resolvable)
         run: |
@@ -70,7 +70,7 @@ jobs:
           fi
 
       - name: Persist report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: panic-attack-report
           path: panic-report.txt

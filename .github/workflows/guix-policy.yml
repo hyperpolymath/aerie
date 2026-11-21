@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@v4.3.1
       - name: Enforce Guix-only package policy
         run: |
           HAS_GUIX=$(find . -path ./.git -prune -o \( -name "*.scm" -o -name ".guix-channel" -o -name "guix.scm" \) -print 2>/dev/null | head -1)
